@@ -17,7 +17,33 @@ import {
   FarmerProblemReportResponse
 } from '../types';
 
-const API_BASE = '/api';
+// Resolve API base URL dynamically:
+// 1. Checks VITE_API_URL (e.g. "https://agribiotech-api.vercel.app" or "https://agribiotech-backend.onrender.com")
+// 2. Checks VITE_API_BASE_URL
+// 3. Defaults to '/api' for local Vite proxy or same-origin deployment
+const getApiBase = (): string => {
+  const envUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').trim();
+  if (!envUrl) {
+    return '/api';
+  }
+  const clean = envUrl.replace(/\/+$/, '');
+  return clean.endsWith('/api') ? clean : `${clean}/api`;
+};
+
+export const API_BASE = getApiBase();
+
+export const getAssetUrl = (url?: string): string => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  const envUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').trim();
+  if (envUrl) {
+    const origin = envUrl.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+    return `${origin}${url.startsWith('/') ? '' : '/'}${url}`;
+  }
+  return url;
+};
 
 function getAuthHeader(): Record<string, string> {
   const token = localStorage.getItem('agribio_token');
@@ -43,7 +69,8 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...options.headers,
   };
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  const url = `${API_BASE}${endpoint}`;
+  const response = await fetch(url, {
     ...options,
     headers,
   });
@@ -53,8 +80,11 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     try {
       const data = await response.json();
       if (data.error) errorMsg = data.error;
+      else if (data.message) errorMsg = data.message;
     } catch {
-      // ignore json parse error
+      if (response.status === 404) {
+        errorMsg = `API Endpoint Not Found (404) at ${url}. Please verify backend deployment and VITE_API_URL in Vercel settings.`;
+      }
     }
     throw new Error(errorMsg);
   }

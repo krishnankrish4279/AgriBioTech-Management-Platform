@@ -5,7 +5,12 @@ dotenv.config();
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/agribiotech';
 
+let demoUsersInitialized = false;
+
 export const ensureDemoUsers = async (): Promise<void> => {
+  if (demoUsersInitialized) return;
+  demoUsersInitialized = true;
+
   try {
     const { User } = await import('../models');
     const bcrypt = (await import('bcryptjs')).default;
@@ -41,11 +46,12 @@ export const ensureDemoUsers = async (): Promise<void> => {
       },
     ];
 
-    const salt = await bcrypt.genSalt(10);
+    let salt: string | null = null;
 
     for (const demo of demoUsers) {
       const existing = await User.findOne({ email: demo.email.toLowerCase() });
       if (!existing) {
+        if (!salt) salt = await bcrypt.genSalt(10);
         const hash = await bcrypt.hash(demo.password, salt);
         await User.create({
           name: demo.name,
@@ -54,16 +60,7 @@ export const ensureDemoUsers = async (): Promise<void> => {
           role: demo.role,
           phone: demo.phone,
         });
-        console.log(`[Demo User] Created ${demo.email} (${demo.role})`);
-      } else {
-        // Ensure role is correct and password can be validated
-        const isMatch = await bcrypt.compare(demo.password, existing.passwordHash);
-        if (!isMatch || existing.role !== demo.role) {
-          existing.passwordHash = await bcrypt.hash(demo.password, salt);
-          existing.role = demo.role as any;
-          await existing.save();
-          console.log(`[Demo User] Updated credentials for ${demo.email}`);
-        }
+        console.log(`[Demo User] Initialized ${demo.email} (${demo.role})`);
       }
     }
 
@@ -74,14 +71,56 @@ export const ensureDemoUsers = async (): Promise<void> => {
   }
 };
 
+const getMongoUri = (): string => {
+  if (process.env.MONGODB_URI && process.env.MONGODB_URI.trim()) {
+    return process.env.MONGODB_URI.trim();
+  }
+  return 'mongodb://localhost:27017/agribiotech';
+};
+
+let cachedPromise: Promise<typeof mongoose> | null = null;
+
 export const connectDB = async (): Promise<void> => {
+  if (mongoose.connection.readyState >= 1) {
+    if (!demoUsersInitialized) {
+      demoUsersInitialized = true;
+      await ensureDemoUsers();
+    }
+    return;
+  }
+
+  const uri = getMongoUri();
+
+  // If in production/Vercel and MONGODB_URI is missing or pointing to localhost, fail fast with a clear error
+  if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+    if (!process.env.MONGODB_URI || uri.includes('localhost') || uri.includes('127.0.0.1')) {
+      const msg = 'MONGODB_URI is not configured in Vercel environment variables. Please add your MongoDB Atlas connection string in Vercel project settings.';
+      console.error(`❌ [Database Config Error] ${msg}`);
+      throw new Error(msg);
+    }
+  }
+
+  if (!cachedPromise) {
+    cachedPromise = mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 20000,
+    });
+  }
+
   try {
-    const conn = await mongoose.connect(MONGODB_URI);
+    const conn = await cachedPromise;
     console.log(`✅ MongoDB connected successfully: ${conn.connection.host}/${conn.connection.name}`);
-    await ensureDemoUsers();
+    if (!demoUsersInitialized) {
+      demoUsersInitialized = true;
+      await ensureDemoUsers();
+    }
   } catch (error: any) {
+    cachedPromise = null;
     console.error(`❌ MongoDB connection error: ${error.message}`);
-    process.exit(1);
+    if (!process.env.VERCEL) {
+      process.exit(1);
+    }
+    throw error;
   }
 };
 
