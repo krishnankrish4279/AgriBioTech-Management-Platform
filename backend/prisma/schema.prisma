@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id                 String              @id @default(uuid())
+  name               String
+  email              String              @unique
+  passwordHash       String
+  role               String              @default("AGRONOMIST") // ADMIN, AGRONOMIST, BIOTECH_EXPERT, FARMER
+  phone              String?
+  avatarUrl          String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  farmerProfile      Farmer?
+  reportedDiseases   DiseaseCase[]       @relation("UserDiseaseReports")
+  fieldObservations  FieldObservation[]  @relation("UserObservations")
+  advisoriesGiven    FarmerAdvisory[]    @relation("AdvisorAdvisories")
+  recommendations    BiotechRecommendation[] @relation("CreatorRecommendations")
+  notifications      Notification[]      @relation("UserNotifications")
+  activityLogs       ActivityLog[]
+}
+
+model Farmer {
+  id                     String             @id @default(uuid())
+  userId                 String?            @unique
+  user                   User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  fullName               String
+  phone                  String
+  email                  String?
+  state                  String
+  district               String
+  village                String?
+  farmSizeAcres          Float              @default(1.0)
+  preferredLanguage      String             @default("English")
+  farmingExperienceYears Int                @default(5)
+  primaryCrops           String             // Comma-separated or JSON list
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  farms                  Farm[]
+  advisories             FarmerAdvisory[]
+  recommendations        BiotechRecommendation[]
+}
+
+model Farm {
+  id                 String             @id @default(uuid())
+  farmerId           String
+  farmer             Farmer             @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  farmName           String
+  locationAddress    String
+  latitude           Float
+  longitude          Float
+  totalAreaAcres     Float
+  soilType           String             // Alluvial, Black Clay, Red Loamy, Sandy Loam, Clay Loam
+  irrigationType     String             // Drip, Sprinkler, Canal, Rainfed, Borewell
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  diseaseCases       DiseaseCase[]
+  observations       FieldObservation[]
+}
+
+model CropVariety {
+  id                      String                  @id @default(uuid())
+  cropName                String                  // Rice, Wheat, Cotton, Maize, Soybean, Tomato, Mustard
+  varietyName             String                  // e.g., Bt-Cotton Bio-Shield II, Golden-Oryza Biofortified
+  cropType                String                  // CEREAL, PULSE, OILSEED, CASH_CROP, HORTICULTURE
+  growingSeason           String                  // KHARIF, RABI, ZAID, YEAR_ROUND
+  soilRequirements        String                  // pH 6.0-7.5, well-drained loamy
+  expectedYieldMin        Float                   // in Tons or Quintals per Acre
+  expectedYieldMax        Float
+  yieldUnit               String                  @default("Quintals/Acre")
+  diseaseResistanceTraits String                  // Comma-separated list e.g. Blast Resistant, Stem Rust Immune
+  biotechTraits           String                  // e.g. CRISPR Drought-X, Cry1Ac/Cry2Ab, Zinc-Fortified
+  recommendedRegions      String                  // e.g. Indo-Gangetic Plains, Deccan Plateau
+  description             String
+  maturityDays            Int                     @default(120)
+  imageUrl                String?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+
+  diseaseCases            DiseaseCase[]
+  observations            FieldObservation[]
+  recommendations         BiotechRecommendation[]
+}
+
+model Disease {
+  id                       String        @id @default(uuid())
+  diseaseName              String        @unique
+  pathogenType             String        // FUNGAL, BACTERIAL, VIRAL, PEST, NEMATODE
+  cropAffiliation          String        // Comma-separated crops it affects
+  commonSymptoms           String
+  severityLevelDefault     String        // LOW, MEDIUM, HIGH, CRITICAL
+  recommendedBiotechSolution String
+  preventionProtocol       String
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
+}
+
+model DiseaseCase {
+  id                   String                  @id @default(uuid())
+  cropVarietyId        String?
+  cropVariety          CropVariety?            @relation(fields: [cropVarietyId], references: [id], onDelete: SetNull)
+  farmId               String
+  farm                 Farm                    @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  reportedById         String
+  reportedBy           User                    @relation("UserDiseaseReports", fields: [reportedById], references: [id], onDelete: Cascade)
+  diseaseName          String
+  symptoms             String
+  severity             String                  // LOW, MEDIUM, HIGH, CRITICAL
+  latitude             Float
+  longitude            Float
+  dateObserved         DateTime                @default(now())
+  status               String                  @default("ACTIVE") // ACTIVE, INVESTIGATING, CONTAINED, RESOLVED
+  imageUrl             String?
+  recommendedTreatment String?
+  resolvedAt           DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  recommendations      BiotechRecommendation[]
+}
+
+model FieldObservation {
+  id                   String                  @id @default(uuid())
+  farmId               String
+  farm                 Farm                    @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  cropVarietyId        String?
+  cropVariety          CropVariety?            @relation(fields: [cropVarietyId], references: [id], onDelete: SetNull)
+  observerId           String
+  observer             User                    @relation("UserObservations", fields: [observerId], references: [id], onDelete: Cascade)
+  observationDate      DateTime                @default(now())
+  growthStage          String                  // SEEDLING, VEGETATIVE, FLOWERING, GRAIN_FILLING, MATURITY
+  plantHealthScore     Int                     @default(8) // 1 to 10 scale
+  soilMoisture         String                  // OPTIMAL, DRY, WATERLOGGED, MODERATE
+  soilHealthNotes      String?
+  weatherCondition     String                  // SUNNY, HUMID_OVERCAST, RAINY, DRY_WINDY
+  pestSymptoms         String?
+  notes                String
+  photoUrl             String?
+  latitude             Float?
+  longitude            Float?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  recommendations      BiotechRecommendation[]
+}
+
+model BiotechRecommendation {
+  id                     String            @id @default(uuid())
+  cropVarietyId          String?
+  cropVariety            CropVariety?      @relation(fields: [cropVarietyId], references: [id], onDelete: SetNull)
+  diseaseCaseId          String?
+  diseaseCase            DiseaseCase?      @relation(fields: [diseaseCaseId], references: [id], onDelete: SetNull)
+  fieldObservationId     String?
+  fieldObservation       FieldObservation? @relation(fields: [fieldObservationId], references: [id], onDelete: SetNull)
+  farmerId               String?
+  farmer                 Farmer?           @relation(fields: [farmerId], references: [id], onDelete: SetNull)
+  creatorId              String?
+  creator                User?             @relation("CreatorRecommendations", fields: [creatorId], references: [id], onDelete: SetNull)
+  recommendationType     String            // BIOFERTILIZER, BIOPESTICIDE, BIOLOGICAL_CONTROL, VARIETY_SELECTION, CROP_MANAGEMENT, SOIL_ENHANCEMENT
+  title                  String
+  productName            String
+  targetIssue            String
+  reasoning              String
+  expectedBenefit        String
+  applicationInstructions String
+  dosage                 String
+  precautions            String
+  isAutomatedSuggestion  Boolean           @default(false)
+  status                 String            @default("ACTIVE") // PENDING_REVIEW, ACTIVE, APPLIED, ARCHIVED
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+}
+
+model FarmerAdvisory {
+  id          String   @id @default(uuid())
+  farmerId    String
+  farmer      Farmer   @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  advisorId   String
+  advisor     User     @relation("AdvisorAdvisories", fields: [advisorId], references: [id], onDelete: Cascade)
+  title       String
+  category    String   // DISEASE_ALERT, IRRIGATION, NUTRIENT_MANAGEMENT, BIOTECH_INPUT, WEATHER_ACTION, GENERAL
+  message     String
+  priority    String   @default("ROUTINE") // ROUTINE, IMPORTANT, URGENT
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Notification {
+  id              String   @id @default(uuid())
+  recipientUserId String
+  recipient       User     @relation("UserNotifications", fields: [recipientUserId], references: [id], onDelete: Cascade)
+  type            String   // OUTBREAK_ALERT, NEW_ADVISORY, NEW_RECOMMENDATION, FIELD_VISIT_REMINDER, HEALTH_CRITICAL
+  title           String
+  message         String
+  severity        String   @default("INFO") // INFO, WARNING, DANGER, SUCCESS
+  isRead          Boolean  @default(false)
+  linkUrl         String?
+  createdAt       DateTime @default(now())
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  module    String
+  details   String
+  createdAt DateTime @default(now())
+}
