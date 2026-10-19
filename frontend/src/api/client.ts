@@ -20,9 +20,19 @@ import {
 // Resolve API base URL dynamically:
 // 1. Checks VITE_API_URL (e.g. "https://agribiotech-api.vercel.app" or "https://agribiotech-backend.onrender.com")
 // 2. Checks VITE_API_BASE_URL
-// 3. Defaults to '/api' for local Vite proxy or same-origin deployment
-const getApiBase = (): string => {
-  const envUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').trim();
+// 3. Checks localStorage override ('agribio_api_url') for immediate in-browser backend linking
+// 4. Defaults to '/api' for local Vite proxy or same-origin deployment
+export const getApiBase = (): string => {
+  let envUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').trim();
+
+  // Runtime fallback via localStorage if environment variable wasn't set during build
+  if (!envUrl && typeof window !== 'undefined') {
+    const override = localStorage.getItem('agribio_api_url') || sessionStorage.getItem('agribio_api_url');
+    if (override && override.trim()) {
+      envUrl = override.trim();
+    }
+  }
+
   if (!envUrl) {
     return '/api';
   }
@@ -37,9 +47,9 @@ export const getAssetUrl = (url?: string): string => {
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
     return url;
   }
-  const envUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').trim();
-  if (envUrl) {
-    const origin = envUrl.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+  const base = getApiBase();
+  const origin = base.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+  if (origin && origin !== '/api') {
     return `${origin}${url.startsWith('/') ? '' : '/'}${url}`;
   }
   return url;
@@ -69,25 +79,31 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...options.headers,
   };
 
-  const url = `${API_BASE}${endpoint}`;
+  const currentBase = getApiBase();
+  const url = `${currentBase}${endpoint}`;
   const response = await fetch(url, {
     ...options,
     headers,
   });
 
-  if (!response.ok) {
-    let errorMsg = `HTTP Error ${response.status}`;
-    try {
-      const data = await response.json();
-      if (data.error) errorMsg = data.error;
-      else if (data.message) errorMsg = data.message;
-    } catch {
-      if (response.status === 404) {
-        errorMsg = `API Endpoint Not Found (404) at ${url}. Please verify backend deployment and VITE_API_URL in Vercel settings.`;
+    if (!response.ok) {
+      let errorMsg = `HTTP Error ${response.status}`;
+      try {
+        const data = await response.json();
+        if (data.error) errorMsg = data.error;
+        else if (data.message) errorMsg = data.message;
+      } catch {
+        if (response.status === 404) {
+          const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+          if (!isLocal && API_BASE === '/api') {
+            errorMsg = `API Endpoint Not Found (404): The frontend is calling relative path '${url}' on its own static domain because VITE_API_URL is missing in your Vercel Environment Variables. Please set VITE_API_URL to your deployed backend URL (e.g. https://<backend-app>.vercel.app) and redeploy the frontend with 'Clear build cache'.`;
+          } else {
+            errorMsg = `API Endpoint Not Found (404) at ${url}. Please verify your backend deployment and routes.`;
+          }
+        }
       }
+      throw new Error(errorMsg);
     }
-    throw new Error(errorMsg);
-  }
 
   return response.json();
 }
@@ -144,6 +160,8 @@ export const api = {
       request<DiseaseCase>(`/diseases/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteCase: (id: string) =>
       request<{ message: string }>(`/diseases/${id}`, { method: 'DELETE' }),
+    syncCoordinates: () =>
+      request<{ message: string; updatedCount: number; details: any[]; unresolvable: any[] }>('/diseases/sync-coordinates', { method: 'POST' }),
   },
 
   // Biotech Recommendations
@@ -190,6 +208,13 @@ export const api = {
       request<{ message: string }>(`/farmers/${id}`, { method: 'DELETE' }),
     getFarms: () => request<Farm[]>('/farms'),
     addFarmPlot: (data: Partial<Farm>) =>
+      request<Farm>('/farms', { method: 'POST', body: JSON.stringify(data) }),
+  },
+
+  // Farm Plots
+  farms: {
+    getAll: () => request<Farm[]>('/farms'),
+    create: (data: Partial<Farm>) =>
       request<Farm>('/farms', { method: 'POST', body: JSON.stringify(data) }),
   },
 
@@ -244,7 +269,7 @@ export const api = {
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/upload`, {
+    const res = await fetch(`${getApiBase()}/upload`, {
       method: 'POST',
       headers,
       body: formData,

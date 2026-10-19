@@ -95,6 +95,27 @@ export const DiseaseDetailModal: React.FC<DiseaseDetailModalProps> = ({
     }
   };
 
+  const handleSyncFarmCoords = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const farmLat = diseaseCase.farm?.latitude ?? (diseaseCase.farm as any)?.lat;
+      const farmLng = diseaseCase.farm?.longitude ?? (diseaseCase.farm as any)?.lng;
+      if (!farmLat || !farmLng) {
+        throw new Error('Linked farm does not have verified geographic coordinates in database.');
+      }
+      await api.diseases.updateCase(diseaseCase.id, {
+        latitude: farmLat,
+        longitude: farmLng,
+      });
+      onUpdated();
+    } catch (err: any) {
+      setError(err.message || 'Failed to sync coordinates with farm.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const cropName = diseaseCase.crop || diseaseCase.cropVariety?.cropName || diseaseCase.farm?.currentCrop;
   const varietyName = diseaseCase.cropVariety?.varietyName;
   const farmName = diseaseCase.farm?.farmName || (typeof diseaseCase.farm === 'string' ? diseaseCase.farm : 'Farm Plot');
@@ -324,9 +345,26 @@ export const DiseaseDetailModal: React.FC<DiseaseDetailModalProps> = ({
                       {locationAddress}
                     </div>
                   )}
-                  {lat && lng && (
+                  {lat && lng && !(lat === 0 && lng === 0) ? (
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '4px', fontFamily: 'monospace' }}>
                       GPS: [{lat.toFixed(4)}, {lng.toFixed(4)}]
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: '8px' }}>
+                      <span style={{ fontSize: '0.72rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px' }}>
+                        <AlertTriangle size={12} /> Geographic coordinates unmapped
+                      </span>
+                      {canEdit && (diseaseCase.farm?.latitude || (typeof diseaseCase.farm === 'object' && (diseaseCase.farm as any)?.latitude)) && (
+                        <button
+                          type="button"
+                          onClick={handleSyncFarmCoords}
+                          disabled={saving}
+                          className="btn btn-secondary btn-sm"
+                          style={{ fontSize: '0.72rem', padding: '3px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          <MapPin size={12} color="#10b981" /> Sync with Farm Location
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

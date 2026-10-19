@@ -163,6 +163,13 @@ export const getDiseaseCases = async (req: Request, res: Response): Promise<void
       const crop = variety?.cropName || farm?.currentCrop || c.crop || 'Unknown';
       const cropVarietyName = variety?.varietyName || c.cropVariety || '';
 
+      const farmLat = typeof farm?.latitude === 'number' && !isNaN(farm.latitude)
+        ? farm.latitude
+        : (farm?.latitude !== undefined && farm?.latitude !== null && farm?.latitude !== '' ? parseFloat(farm.latitude) : undefined);
+      const farmLng = typeof farm?.longitude === 'number' && !isNaN(farm.longitude)
+        ? farm.longitude
+        : (farm?.longitude !== undefined && farm?.longitude !== null && farm?.longitude !== '' ? parseFloat(farm.longitude) : undefined);
+
       const rawLat = c.latitude;
       const rawLng = c.longitude;
       const parsedLat = typeof rawLat === 'number' && !isNaN(rawLat)
@@ -171,8 +178,11 @@ export const getDiseaseCases = async (req: Request, res: Response): Promise<void
       const parsedLng = typeof rawLng === 'number' && !isNaN(rawLng)
         ? rawLng
         : (rawLng !== undefined && rawLng !== null && rawLng !== '' ? parseFloat(rawLng) : undefined);
-      const validLat = parsedLat !== undefined && !isNaN(parsedLat) ? parsedLat : undefined;
-      const validLng = parsedLng !== undefined && !isNaN(parsedLng) ? parsedLng : undefined;
+      const validLat = parsedLat !== undefined && !isNaN(parsedLat) && parsedLat !== 0 ? parsedLat : undefined;
+      const validLng = parsedLng !== undefined && !isNaN(parsedLng) && parsedLng !== 0 ? parsedLng : undefined;
+
+      const resolvedLat = validLat ?? (farmLat !== undefined && !isNaN(farmLat) && farmLat !== 0 ? farmLat : undefined);
+      const resolvedLng = validLng ?? (farmLng !== undefined && !isNaN(farmLng) && farmLng !== 0 ? farmLng : undefined);
 
       const reqUser = (req as AuthenticatedRequest).user;
       const isPrivileged = reqUser && (reqUser.role === 'admin' || reqUser.role === 'agronomist');
@@ -195,6 +205,10 @@ export const getDiseaseCases = async (req: Request, res: Response): Promise<void
           id: farm._id.toString(),
           farmName: farm.farmName,
           locationAddress: farm.locationAddress,
+          latitude: farm.latitude,
+          longitude: farm.longitude,
+          lat: farm.latitude,
+          lng: farm.longitude,
           farmerId: farmer?._id?.toString(),
           farmer: farmer ? {
             id: farmer._id.toString(),
@@ -223,10 +237,10 @@ export const getDiseaseCases = async (req: Request, res: Response): Promise<void
         affectedArea: c.affectedArea,
         symptoms: c.symptoms,
         severity: (c.severity || 'MEDIUM').toUpperCase(),
-        latitude: validLat,
-        longitude: validLng,
-        lat: validLat,
-        lng: validLng,
+        latitude: resolvedLat,
+        longitude: resolvedLng,
+        lat: resolvedLat,
+        lng: resolvedLng,
         dateObserved: c.dateObserved,
         status: (c.status || 'ACTIVE').toUpperCase(),
         imageUrl: c.imageUrl,
@@ -290,6 +304,13 @@ export const getDiseaseCaseById = async (req: Request, res: Response): Promise<v
     const crop = variety?.cropName || farm?.currentCrop || c.crop || 'Unknown';
     const cropVarietyName = variety?.varietyName || c.cropVariety || '';
 
+    const farmLat = typeof farm?.latitude === 'number' && !isNaN(farm.latitude)
+      ? farm.latitude
+      : (farm?.latitude !== undefined && farm?.latitude !== null && farm?.latitude !== '' ? parseFloat(farm.latitude) : undefined);
+    const farmLng = typeof farm?.longitude === 'number' && !isNaN(farm.longitude)
+      ? farm.longitude
+      : (farm?.longitude !== undefined && farm?.longitude !== null && farm?.longitude !== '' ? parseFloat(farm.longitude) : undefined);
+
     const rawLat = c.latitude;
     const rawLng = c.longitude;
     const parsedLat = typeof rawLat === 'number' && !isNaN(rawLat)
@@ -298,8 +319,11 @@ export const getDiseaseCaseById = async (req: Request, res: Response): Promise<v
     const parsedLng = typeof rawLng === 'number' && !isNaN(rawLng)
       ? rawLng
       : (rawLng !== undefined && rawLng !== null && rawLng !== '' ? parseFloat(rawLng) : undefined);
-    const validLat = parsedLat !== undefined && !isNaN(parsedLat) ? parsedLat : undefined;
-    const validLng = parsedLng !== undefined && !isNaN(parsedLng) ? parsedLng : undefined;
+    const validLat = parsedLat !== undefined && !isNaN(parsedLat) && parsedLat !== 0 ? parsedLat : undefined;
+    const validLng = parsedLng !== undefined && !isNaN(parsedLng) && parsedLng !== 0 ? parsedLng : undefined;
+
+    const resolvedLat = validLat ?? (farmLat !== undefined && !isNaN(farmLat) && farmLat !== 0 ? farmLat : undefined);
+    const resolvedLng = validLng ?? (farmLng !== undefined && !isNaN(farmLng) && farmLng !== 0 ? farmLng : undefined);
 
     // Fetch any biotech recommendations created for this disease report or farmer
     const linkedRecommendations = await BiotechnologyRecommendation.find({
@@ -330,6 +354,10 @@ export const getDiseaseCaseById = async (req: Request, res: Response): Promise<v
         id: farm._id.toString(),
         farmName: farm.farmName,
         locationAddress: farm.locationAddress,
+        latitude: farm.latitude,
+        longitude: farm.longitude,
+        lat: farm.latitude,
+        lng: farm.longitude,
         farmerId: farmer?._id?.toString(),
         farmer: farmer ? {
           id: farmer._id.toString(),
@@ -358,10 +386,10 @@ export const getDiseaseCaseById = async (req: Request, res: Response): Promise<v
       affectedArea: c.affectedArea,
       symptoms: c.symptoms,
       severity: (c.severity || 'MEDIUM').toUpperCase(),
-      latitude: validLat,
-      longitude: validLng,
-      lat: validLat,
-      lng: validLng,
+      latitude: resolvedLat,
+      longitude: resolvedLng,
+      lat: resolvedLat,
+      lng: resolvedLng,
       dateObserved: c.dateObserved,
       status: (c.status || 'ACTIVE').toUpperCase(),
       imageUrl: c.imageUrl,
@@ -661,7 +689,7 @@ export const reportFarmerProblem = async (req: AuthenticatedRequest, res: Respon
 export const updateDiseaseCase = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { status, severity, symptoms, diseaseName, recommendedTreatment, resolvedAt, latitude, longitude, lat, lng, assignedAdvisorId } = req.body;
+    const { status, severity, symptoms, diseaseName, recommendedTreatment, resolvedAt, latitude, longitude, lat, lng, assignedAdvisorId, syncWithFarmLocation } = req.body;
 
     const updateData: any = {};
     if (status) updateData.status = status.toUpperCase();
@@ -682,6 +710,18 @@ export const updateDiseaseCase = async (req: AuthenticatedRequest, res: Response
     if (rawLng !== undefined && rawLng !== null && rawLng !== '') {
       const parsedLng = parseFloat(rawLng);
       if (!isNaN(parsedLng)) updateData.longitude = parsedLng;
+    }
+
+    if (syncWithFarmLocation) {
+      const existing = await DiseaseReport.findById(id).populate('farmId');
+      const farm: any = existing?.farmId;
+      if (existing && farm && typeof farm.latitude === 'number' && typeof farm.longitude === 'number' && !isNaN(farm.latitude) && !isNaN(farm.longitude)) {
+        updateData.latitude = farm.latitude;
+        updateData.longitude = farm.longitude;
+        if (!existing.locationAddress && farm.locationAddress) {
+          updateData.locationAddress = farm.locationAddress;
+        }
+      }
     }
 
     const updated = await DiseaseReport.findByIdAndUpdate(id, updateData, { new: true });
@@ -710,6 +750,69 @@ export const updateDiseaseCase = async (req: AuthenticatedRequest, res: Response
   } catch (error: any) {
     console.error('Error updating disease case:', error);
     res.status(500).json({ error: 'Failed to update disease case' });
+  }
+};
+
+/**
+ * Safely synchronize any existing disease reports lacking geographic coordinates
+ * with the verified coordinates of their linked farms. Never assigns invented coordinates.
+ */
+export const syncDiseaseCoordinates = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const unmappedReports = await DiseaseReport.find({
+      $or: [
+        { latitude: { $exists: false } },
+        { latitude: null },
+        { latitude: 0 },
+        { longitude: { $exists: false } },
+        { longitude: null },
+        { longitude: 0 },
+      ]
+    }).populate('farmId');
+
+    let updatedCount = 0;
+    const details: any[] = [];
+    const unresolvable: any[] = [];
+
+    for (const r of unmappedReports) {
+      const f: any = r.farmId;
+      if (f && typeof f.latitude === 'number' && typeof f.longitude === 'number' && !isNaN(f.latitude) && !isNaN(f.longitude) && !(f.latitude === 0 && f.longitude === 0)) {
+        await DiseaseReport.updateOne(
+          { _id: r._id },
+          {
+            $set: {
+              latitude: f.latitude,
+              longitude: f.longitude,
+              locationAddress: r.locationAddress || f.locationAddress
+            }
+          }
+        );
+        updatedCount++;
+        details.push({
+          reportId: r._id.toString(),
+          diseaseName: r.diseaseName,
+          farmName: f.farmName,
+          syncedCoordinates: { latitude: f.latitude, longitude: f.longitude },
+        });
+      } else {
+        unresolvable.push({
+          reportId: r._id.toString(),
+          diseaseName: r.diseaseName,
+          reason: 'Linked farm does not have verified geographic coordinates in database',
+        });
+      }
+    }
+
+    res.json({
+      message: `Successfully synchronized ${updatedCount} disease report(s) with verified farm coordinates.`,
+      updatedCount,
+      totalUnmappedFound: unmappedReports.length,
+      details,
+      unresolvable,
+    });
+  } catch (error: any) {
+    console.error('Error synchronizing disease coordinates:', error);
+    res.status(500).json({ error: 'Failed to synchronize disease coordinates with farm records' });
   }
 };
 

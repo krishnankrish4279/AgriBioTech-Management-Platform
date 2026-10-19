@@ -122,6 +122,7 @@ export const DiseasePage: React.FC = () => {
             setShowDetailModal(true);
           }}
           onRetry={loadCases}
+          onOpenReportModal={() => setShowReportModal(true)}
         />
       </div>
 

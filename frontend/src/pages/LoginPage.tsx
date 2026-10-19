@@ -251,16 +251,51 @@ export const LoginPage: React.FC = () => {
           <div style={{
             background: 'rgba(239, 68, 68, 0.15)',
             border: '1px solid rgba(239, 68, 68, 0.4)',
-            padding: '10px 14px',
+            padding: '12px 14px',
             borderRadius: 'var(--radius-md)',
             color: '#f87171',
             fontSize: '0.84rem',
             marginBottom: '18px',
             display: 'flex',
-            alignItems: 'center',
+            flexDirection: 'column',
             gap: '8px',
           }}>
-            <AlertCircle size={16} /> {error}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              <AlertCircle size={16} style={{ marginTop: '2px', flexShrink: 0 }} />
+              <div>{error}</div>
+            </div>
+            {error.includes('VITE_API_URL') && (
+              <div style={{ marginTop: '4px', paddingLeft: '24px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const current = localStorage.getItem('agribio_api_url') || '';
+                    const entered = window.prompt('Enter your deployed Express backend URL (e.g. https://agribiotech-backend.vercel.app):', current);
+                    if (entered !== null) {
+                      const cleaned = entered.trim().replace(/\/+$/, '');
+                      if (cleaned) {
+                        localStorage.setItem('agribio_api_url', cleaned);
+                      } else {
+                        localStorage.removeItem('agribio_api_url');
+                      }
+                      window.location.reload();
+                    }
+                  }}
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.25)',
+                    border: '1px solid rgba(239, 68, 68, 0.5)',
+                    color: '#fff',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    padding: '5px 12px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ⚙️ Connect Deployed Backend URL Directly
+                </button>
+              </div>
+            )}
           </div>
         )}
 

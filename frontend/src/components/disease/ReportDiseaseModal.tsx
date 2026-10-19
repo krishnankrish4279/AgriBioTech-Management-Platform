@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
 import { Farm, CropVariety, Disease } from '../../types';
 import { api } from '../../api/client';
-import { ShieldAlert, Upload, Sparkles, Check, AlertCircle } from 'lucide-react';
+import { ShieldAlert, Upload, Sparkles, Check, AlertCircle, MapPin, Navigation } from 'lucide-react';
 
 interface ReportDiseaseModalProps {
   isOpen: boolean;
@@ -61,6 +61,33 @@ export const ReportDiseaseModal: React.FC<ReportDiseaseModalProps> = ({
       if (chosen.longitude !== undefined && chosen.longitude !== null) {
         setLongitude(chosen.longitude.toString());
       }
+    }
+  };
+
+  const handleDetectFieldGPS = () => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by your browser.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLatitude(pos.coords.latitude.toFixed(6));
+        setLongitude(pos.coords.longitude.toFixed(6));
+      },
+      (err) => {
+        setError(`Unable to acquire field GPS coordinates: ${err.message}`);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const handleUseFarmCoords = () => {
+    const chosen = farms.find((f) => f.id === farmId);
+    if (chosen && chosen.latitude && chosen.longitude) {
+      setLatitude(chosen.latitude.toString());
+      setLongitude(chosen.longitude.toString());
+    } else {
+      setError('Selected farm does not have saved GPS coordinates.');
     }
   };
 
@@ -200,6 +227,27 @@ export const ReportDiseaseModal: React.FC<ReportDiseaseModalProps> = ({
               onChange={(e) => setLongitude(e.target.value)}
             />
           </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', marginTop: '-6px' }}>
+          <button
+            type="button"
+            onClick={handleUseFarmCoords}
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px' }}
+            title="Use verified farm location coordinates"
+          >
+            <MapPin size={13} color="#10b981" /> Use Farm Coordinates
+          </button>
+          <button
+            type="button"
+            onClick={handleDetectFieldGPS}
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px' }}
+            title="Detect GPS coordinates from browser"
+          >
+            <Navigation size={13} color="#38bdf8" /> Detect Field GPS
+          </button>
         </div>
 
         <div className="grid-2">

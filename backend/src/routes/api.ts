@@ -58,6 +58,7 @@ router.put('/diseases/cases/:id', authenticate, requireRole(['admin', 'agronomis
 router.put('/diseases/:id', authenticate, requireRole(['admin', 'agronomist', 'biotech_expert']), diseaseController.updateDiseaseCase);
 router.delete('/diseases/cases/:id', authenticate, requireRole(['admin', 'agronomist']), diseaseController.deleteDiseaseCase);
 router.delete('/diseases/:id', authenticate, requireRole(['admin', 'agronomist']), diseaseController.deleteDiseaseCase);
+router.post('/diseases/sync-coordinates', optionalAuth, diseaseController.syncDiseaseCoordinates);
 
 // Biotechnology Recommendations (CRUD)
 router.get('/recommendations', optionalAuth, recommendationController.getRecommendations);

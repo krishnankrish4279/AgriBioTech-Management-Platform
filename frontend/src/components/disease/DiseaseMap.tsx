@@ -27,7 +27,9 @@ import {
   ExternalLink,
   Save,
   Clock,
+  Plus,
 } from 'lucide-react';
+import { api } from '../../api/client';
 
 export interface MappableDiseaseCase extends DiseaseCase {
   normalizedLat: number;
@@ -44,6 +46,7 @@ export interface DiseaseMapProps {
   error?: string | null;
   onSelectCase?: (c: DiseaseCase) => void;
   onRetry?: () => void;
+  onOpenReportModal?: () => void;
 }
 
 const STORAGE_CACHE_KEY = 'agribio_gis_location_cache';
@@ -151,12 +154,21 @@ const MapFocusController: React.FC<{
 };
 
 /**
- * Normalize and validate coordinates strictly according to requirement 3, 4, 5
+ * Normalize and validate coordinates strictly according to requirement 3, 4, 5.
+ * Safely accepts direct coordinates (latitude/longitude, lat/lng) or nested verified farm coordinates.
  */
 export function parseCoordinates(report: any): { lat: number; lng: number } | null {
   if (!report) return null;
-  const rawLat = report.latitude ?? report.lat;
-  const rawLng = report.longitude ?? report.lng;
+  let rawLat = report.latitude ?? report.lat ?? report.farm?.latitude ?? report.farm?.lat;
+  let rawLng = report.longitude ?? report.lng ?? report.farm?.longitude ?? report.farm?.lng;
+
+  // Also support GeoJSON [longitude, latitude] format if present
+  if ((rawLat === undefined || rawLat === null || rawLng === undefined || rawLng === null) &&
+      report.location?.coordinates && Array.isArray(report.location.coordinates) &&
+      report.location.coordinates.length >= 2) {
+    rawLng = report.location.coordinates[0];
+    rawLat = report.location.coordinates[1];
+  }
 
   if (
     rawLat === undefined ||
@@ -194,6 +206,7 @@ export const DiseaseMap: React.FC<DiseaseMapProps> = ({
   error = null,
   onSelectCase,
   onRetry,
+  onOpenReportModal,
 }) => {
   // Severity filter for disease markers
   const [selectedFilter, setSelectedFilter] = useState<string>('ALL');
@@ -204,6 +217,10 @@ export const DiseaseMap: React.FC<DiseaseMapProps> = ({
   const [lastUpdatedText, setLastUpdatedText] = useState<string>('');
   const [locating, setLocating] = useState<boolean>(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+
+  // Synchronizing unmapped database records state
+  const [syncing, setSyncing] = useState<boolean>(false);
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
   // Search Radius configuration: 5km, 10km (default), 25km, 50km
   const [radiusKm, setRadiusKm] = useState<number>(10);
@@ -324,8 +341,49 @@ export const DiseaseMap: React.FC<DiseaseMapProps> = ({
       }
     });
 
-    return Array.from(uniqueMap.values());
-  }, [mappableCases, userLocation, casesWithDistance, radiusKm, selectedFilter]);
+    const deduped = Array.from(uniqueMap.values());
+
+    if (userLocation) {
+      const severityRank: Record<string, number> = {
+        CRITICAL: 4,
+        HIGH: 3,
+        MEDIUM: 2,
+        LOW: 1,
+      };
+
+      deduped.sort((a, b) => {
+        const distA = (a as any).distanceKm ?? 999999;
+        const distB = (b as any).distanceKm ?? 999999;
+        if (sortOrder === 'SEVERITY') {
+          const sDiff = (severityRank[b.severity] || 0) - (severityRank[a.severity] || 0);
+          if (sDiff !== 0) return sDiff;
+          return distA - distB;
+        }
+        if (distA !== distB) {
+          return distA - distB;
+        }
+        return (severityRank[b.severity] || 0) - (severityRank[a.severity] || 0);
+      });
+    }
+
+    return deduped;
+  }, [mappableCases, userLocation, casesWithDistance, radiusKm, selectedFilter, sortOrder]);
+
+  const handleSyncCoordinates = async () => {
+    setSyncing(true);
+    setSyncFeedback(null);
+    try {
+      const res = await api.diseases.syncCoordinates();
+      setSyncFeedback(res.message);
+      if (onRetry) {
+        onRetry();
+      }
+    } catch (err: any) {
+      setSyncFeedback(err.message || 'Failed to synchronize coordinates with farm locations.');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   /**
    * Save successful location to localStorage
@@ -1384,26 +1442,73 @@ export const DiseaseMap: React.FC<DiseaseMapProps> = ({
               borderRadius: 'var(--radius-lg)',
               padding: '24px 32px',
               textAlign: 'center',
-              maxWidth: '380px',
+              maxWidth: '420px',
               boxShadow: '0 12px 36px rgba(0,0,0,0.6)',
-              pointerEvents: 'none',
+              pointerEvents: 'auto',
             }}
           >
-            <ShieldAlert size={36} color="#10b981" style={{ margin: '0 auto 10px' }} />
+            <ShieldAlert size={36} color={cases.length > 0 && mappableCases.length === 0 ? '#f59e0b' : '#10b981'} style={{ margin: '0 auto 10px' }} />
             <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#fff', marginBottom: '6px' }}>
               {userLocation
                 ? `No disease alerts found within ${radiusKm} km.`
+                : cases.length > 0 && mappableCases.length === 0
+                ? 'Unmapped Outbreak Reports'
                 : mappableCases.length === 0
                 ? 'No Mapped Outbreak Data'
                 : `No ${selectedFilter} Outbreaks`}
             </div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4, marginBottom: (cases.length > 0 && mappableCases.length === 0) || (cases.length === 0 && onOpenReportModal) ? '14px' : '0' }}>
               {userLocation
                 ? `No pathogen outbreaks detected in MongoDB within ${radiusKm} km of your GPS location. Distant records elsewhere in the state are excluded.`
+                : cases.length > 0 && mappableCases.length === 0
+                ? `Found ${cases.length} disease report${cases.length === 1 ? '' : 's'} in the database, but geographic coordinates are missing. You can safely synchronize them using verified farm locations.`
                 : mappableCases.length === 0
                 ? 'No disease reports with valid geographic coordinates were found in the database.'
                 : `No disease outbreaks currently match the ${selectedFilter} severity level.`}
             </div>
+
+            {/* Action buttons inside empty state */}
+            {!userLocation && cases.length > 0 && mappableCases.length === 0 && (
+              <button
+                onClick={handleSyncCoordinates}
+                disabled={syncing}
+                className="btn btn-primary btn-sm"
+                style={{
+                  margin: '0 auto',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.78rem',
+                  padding: '7px 14px',
+                }}
+              >
+                <RefreshCw size={13} className={syncing ? 'spin-animation' : ''} />
+                {syncing ? 'Synchronizing Farm Locations...' : 'Sync with Verified Farm Locations'}
+              </button>
+            )}
+
+            {!userLocation && cases.length === 0 && onOpenReportModal && (
+              <button
+                onClick={onOpenReportModal}
+                className="btn btn-danger btn-sm"
+                style={{
+                  margin: '0 auto',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.78rem',
+                  padding: '7px 14px',
+                }}
+              >
+                <Plus size={14} /> Report Disease Outbreak
+              </button>
+            )}
+
+            {syncFeedback && (
+              <div style={{ marginTop: '10px', fontSize: '0.74rem', color: '#34d399', fontWeight: 600 }}>
+                {syncFeedback}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1602,62 +1707,118 @@ export const DiseaseMap: React.FC<DiseaseMapProps> = ({
 
         {/* Nearby Alerts Content */}
         {!userLocation ? (
-          <div
-            style={{
-              padding: '24px',
-              borderRadius: 'var(--radius-md)',
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px dashed var(--border-subtle)',
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '10px',
-            }}
-          >
+          locationError ? (
             <div
               style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '50%',
-                background: 'rgba(14, 165, 233, 0.15)',
-                color: '#38bdf8',
+                padding: '24px',
+                borderRadius: 'var(--radius-md)',
+                background: 'rgba(239, 68, 68, 0.05)',
+                border: '1px dashed rgba(239, 68, 68, 0.3)',
+                textAlign: 'center',
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
+                gap: '10px',
               }}
             >
-              <Navigation size={22} />
+              <div
+                style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '50%',
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  color: '#ef4444',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <AlertTriangle size={22} />
+              </div>
+              <div style={{ fontWeight: 700, fontSize: '0.94rem', color: '#fff' }}>
+                Location Permission Required
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '440px', lineHeight: 1.4 }}>
+                {locationError}
+              </div>
+              <button
+                onClick={() => requestLocation(false)}
+                disabled={locating}
+                className="btn btn-secondary btn-sm"
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: '8px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  marginTop: '4px',
+                }}
+              >
+                <RefreshCw size={14} className={locating ? 'spin-animation' : ''} />
+                {locating ? 'Requesting Permission...' : 'Retry Location Access'}
+              </button>
             </div>
-            <div style={{ fontWeight: 700, fontSize: '0.94rem', color: '#fff' }}>
-              Current Location Not Activated
-            </div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '420px', lineHeight: 1.4 }}>
-              Click <strong>"Use My Current Location"</strong> to detect your coordinates using the browser Geolocation API and instantly discover outbreaks within your selected search radius.
-            </div>
-            <button
-              onClick={() => requestLocation(false)}
-              disabled={locating}
-              className="btn btn-sm"
+          ) : (
+            <div
               style={{
-                background: 'linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%)',
-                color: '#fff',
-                padding: '7px 16px',
-                borderRadius: '8px',
-                fontSize: '0.78rem',
-                fontWeight: 700,
+                padding: '24px',
+                borderRadius: 'var(--radius-md)',
+                background: 'rgba(255, 255, 255, 0.02)',
+                border: '1px dashed var(--border-subtle)',
+                textAlign: 'center',
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                gap: '6px',
-                cursor: locating ? 'not-allowed' : 'pointer',
-                marginTop: '4px',
+                justifyContent: 'center',
+                gap: '10px',
               }}
             >
-              <Navigation size={14} className={locating ? 'spin-animation' : ''} />
-              {locating ? 'Requesting Location...' : 'Use My Current Location'}
-            </button>
-          </div>
+              <div
+                style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '50%',
+                  background: 'rgba(14, 165, 233, 0.15)',
+                  color: '#38bdf8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Navigation size={22} />
+              </div>
+              <div style={{ fontWeight: 700, fontSize: '0.94rem', color: '#fff' }}>
+                Current Location Not Activated
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '420px', lineHeight: 1.4 }}>
+                Click <strong>"Use My Current Location"</strong> to detect your coordinates using the browser Geolocation API and instantly discover outbreaks within your selected search radius.
+              </div>
+              <button
+                onClick={() => requestLocation(false)}
+                disabled={locating}
+                className="btn btn-sm"
+                style={{
+                  background: 'linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%)',
+                  color: '#fff',
+                  padding: '7px 16px',
+                  borderRadius: '8px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: locating ? 'not-allowed' : 'pointer',
+                  marginTop: '4px',
+                }}
+              >
+                <Navigation size={14} className={locating ? 'spin-animation' : ''} />
+                {locating ? 'Requesting Location...' : 'Use My Current Location'}
+              </button>
+            </div>
+          )
         ) : displayedCases.length === 0 ? (
           <div
             style={{

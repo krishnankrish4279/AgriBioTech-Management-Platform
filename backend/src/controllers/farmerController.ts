@@ -332,6 +332,8 @@ export const getFarmsList = async (_req: Request, res: Response): Promise<void> 
         totalAreaAcres: f.totalAreaAcres,
         soilType: f.soilType,
         irrigationType: f.irrigationType,
+        currentCrop: f.currentCrop,
+        cropVarietyId: f.cropVarietyId ? f.cropVarietyId.toString() : undefined,
         farmerId: farmer?._id?.toString(),
         farmer: farmer ? {
           id: farmer._id.toString(),

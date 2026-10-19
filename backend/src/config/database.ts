@@ -66,14 +66,71 @@ export const ensureDemoUsers = async (): Promise<void> => {
 
     const { DiseaseReport } = await import('../models');
     await DiseaseReport.updateMany({ isDemo: { $exists: false } }, { $set: { isDemo: true } });
+
+    // Safely backfill any existing disease reports lacking coordinates using their verified farm records
+    const unmappedReports = await DiseaseReport.find({
+      $or: [
+        { latitude: { $exists: false } },
+        { latitude: null },
+        { latitude: 0 },
+        { longitude: { $exists: false } },
+        { longitude: null },
+        { longitude: 0 },
+      ]
+    }).populate('farmId');
+
+    for (const report of unmappedReports) {
+      const f: any = report.farmId;
+      if (f && typeof f.latitude === 'number' && typeof f.longitude === 'number' && !isNaN(f.latitude) && !isNaN(f.longitude) && !(f.latitude === 0 && f.longitude === 0)) {
+        await DiseaseReport.updateOne(
+          { _id: report._id },
+          {
+            $set: {
+              latitude: f.latitude,
+              longitude: f.longitude,
+              locationAddress: report.locationAddress || f.locationAddress,
+            }
+          }
+        );
+        console.log(`[GIS Safe Sync] Linked verified farm GPS [${f.latitude}, ${f.longitude}] to report "${report.diseaseName}" (${report._id})`);
+      }
+    }
   } catch (err: any) {
     console.error('Error ensuring demo users and data:', err.message);
   }
 };
 
-const getMongoUri = (): string => {
-  if (process.env.MONGODB_URI && process.env.MONGODB_URI.trim()) {
-    return process.env.MONGODB_URI.trim();
+export const sanitizeMongoUri = (rawUri: string): string => {
+  try {
+    const trimmed = rawUri.trim();
+    if (!trimmed.startsWith('mongodb://') && !trimmed.startsWith('mongodb+srv://')) {
+      return trimmed;
+    }
+    const scheme = trimmed.startsWith('mongodb+srv://') ? 'mongodb+srv://' : 'mongodb://';
+    const remainder = trimmed.slice(scheme.length);
+    const atIndex = remainder.lastIndexOf('@');
+    if (atIndex === -1) return trimmed; // No user credentials
+
+    const userInfo = remainder.slice(0, atIndex);
+    const hostAndParams = remainder.slice(atIndex + 1);
+    const colonIndex = userInfo.indexOf(':');
+    if (colonIndex === -1) return trimmed; // No password
+
+    const username = userInfo.slice(0, colonIndex);
+    const rawPassword = userInfo.slice(colonIndex + 1);
+    // Safely encode special characters (e.g., @, #, ?, %) while preserving existing URL-encoding
+    const encodedPassword = encodeURIComponent(decodeURIComponent(rawPassword));
+    return `${scheme}${username}:${encodedPassword}@${hostAndParams}`;
+  } catch {
+    return rawUri.trim();
+  }
+};
+
+export const getMongoUri = (): string => {
+  let uri = (process.env.MONGODB_URI || '').trim();
+  uri = uri.replace(/^["']|["']$/g, '').trim();
+  if (uri) {
+    return sanitizeMongoUri(uri);
   }
   return 'mongodb://localhost:27017/agribiotech';
 };
@@ -102,8 +159,10 @@ export const connectDB = async (): Promise<void> => {
 
   if (!cachedPromise) {
     cachedPromise = mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 20000,
+      dbName: process.env.MONGODB_DB_NAME || 'agribiotech',
+      serverSelectionTimeoutMS: 8000,
+      socketTimeoutMS: 30000,
+      family: 4, // Force IPv4 to avoid IPv6 SRV DNS resolution failures in AWS Lambda/Vercel
     });
   }
 

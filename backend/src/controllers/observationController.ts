@@ -28,6 +28,7 @@ export const getObservations = async (req: Request, res: Response): Promise<void
       filter.$or = [
         { notes: { $regex: search.trim(), $options: 'i' } },
         { pestSymptoms: { $regex: search.trim(), $options: 'i' } },
+        { soilHealthNotes: { $regex: search.trim(), $options: 'i' } },
       ];
     }
 
@@ -175,9 +176,13 @@ export const recordObservation = async (req: AuthenticatedRequest, res: Response
 
     const observerId = req.user?.id || (await User.findOne({ role: { $in: ['agronomist', 'AGRONOMIST', 'admin', 'ADMIN'] } }))?._id;
 
+    const cleanCropVarietyId = (cropVarietyId && typeof cropVarietyId === 'string' && cropVarietyId.trim() !== '' && cropVarietyId !== 'undefined' && cropVarietyId !== 'null')
+      ? cropVarietyId.trim()
+      : undefined;
+
     const obs = await FieldObservation.create({
       farmId,
-      cropVarietyId: cropVarietyId || undefined,
+      cropVarietyId: cleanCropVarietyId,
       observerId,
       observationDate: observationDate ? new Date(observationDate) : new Date(),
       growthStage,

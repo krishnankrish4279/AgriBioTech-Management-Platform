@@ -35,17 +35,64 @@ app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Healthcheck endpoints (both root and /api) - defined BEFORE DB middleware so healthchecks ALWAYS succeed
-const healthHandler = (_req: express.Request, res: express.Response) => {
-  res.json({
-    status: 'online',
+import mongoose from 'mongoose';
+
+// Healthcheck endpoints (both root and /api) - verifies actual DB connection without returning fake status or leaking secrets
+const healthHandler = async (_req: express.Request, res: express.Response) => {
+  let isConnected = mongoose.connection.readyState === 1;
+  let connectionError: string | null = null;
+
+  if (!isConnected) {
+    try {
+      await connectDB();
+      isConnected = mongoose.connection.readyState === 1;
+    } catch (err: any) {
+      connectionError = err.message;
+    }
+  }
+
+  const dbStateMap: Record<number, string> = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting',
+  };
+
+  const isHealthy = isConnected;
+  const status = isHealthy ? 'online' : 'degraded';
+  const statusCode = isHealthy ? 200 : 503;
+
+  res.status(statusCode).json({
+    status,
+    healthy: isHealthy,
     service: 'AgriBioTech Management & Farmer Advisory Platform API',
-    database: 'MongoDB',
+    database: {
+      status: dbStateMap[mongoose.connection.readyState] || 'unknown',
+      connected: isConnected,
+      host: isConnected ? mongoose.connection.host : undefined,
+      name: isConnected ? mongoose.connection.name : undefined,
+      error: connectionError || undefined,
+    },
+    environment: process.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString(),
   });
 };
 app.get('/health', healthHandler);
 app.get('/api/health', healthHandler);
+
+// Root route for backend domain - avoids "Cannot GET /"
+app.get('/', (_req: express.Request, res: express.Response) => {
+  res.json({
+    status: 'online',
+    service: 'AgriBioTech Management & Farmer Advisory Platform API',
+    endpoints: {
+      health: '/health',
+      apiHealth: '/api/health',
+      login: '/api/auth/login',
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // Ensure DB connection for request (critical for serverless cold-starts & connection reuse)
 app.use(async (_req, res, next) => {
@@ -72,6 +119,14 @@ const uploadsPath = process.env.VERCEL
 if (fs.existsSync(uploadsPath)) {
   app.use('/uploads', express.static(uploadsPath));
 }
+
+// Normalize double /api prefix if a rewrite or proxy prepended /api twice (e.g. /api/api/auth/login)
+app.use((req, _res, next) => {
+  if (req.url.startsWith('/api/api/')) {
+    req.url = req.url.replace(/^\/api\/api\//, '/api/');
+  }
+  next();
+});
 
 // API Routes mounted on both /api and root /
 // This ensures that whether requests arrive with or without the /api prefix (e.g., via Vercel function rewrites or direct API gateways), Express resolves the endpoint correctly.
