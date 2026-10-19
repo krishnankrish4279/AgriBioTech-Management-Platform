@@ -17,19 +17,33 @@ import {
   FarmerProblemReportResponse
 } from '../types';
 
+// Verified production backend deployment URL on Vercel
+export const PRODUCTION_BACKEND_URL = 'https://agri-bio-tech-management-platform.vercel.app';
+
 // Resolve API base URL dynamically:
-// 1. Checks VITE_API_URL (e.g. "https://agribiotech-api.vercel.app" or "https://agribiotech-backend.onrender.com")
+// 1. Checks VITE_API_URL (e.g. "https://agri-bio-tech-management-platform.vercel.app")
 // 2. Checks VITE_API_BASE_URL
 // 3. Checks localStorage override ('agribio_api_url') for immediate in-browser backend linking
-// 4. Defaults to '/api' for local Vite proxy or same-origin deployment
+// 4. In production browser environments without build-time VITE_API_URL, falls back to PRODUCTION_BACKEND_URL
+//    to avoid sending POST requests to the static frontend domain (which triggers Vercel HTTP 405 Method Not Allowed)
+// 5. Defaults to '/api' for local Vite proxy
 export const getApiBase = (): string => {
   let envUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').trim();
 
-  // Runtime fallback via localStorage if environment variable wasn't set during build
+  // Runtime fallback via localStorage if set
   if (!envUrl && typeof window !== 'undefined') {
     const override = localStorage.getItem('agribio_api_url') || sessionStorage.getItem('agribio_api_url');
     if (override && override.trim()) {
       envUrl = override.trim();
+    }
+  }
+
+  // Prevent sending API requests to the static frontend domain on Vercel (causes 405 Method Not Allowed)
+  if (!envUrl && typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+    if (!isLocal) {
+      envUrl = PRODUCTION_BACKEND_URL;
     }
   }
 
@@ -93,10 +107,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
         if (data.error) errorMsg = data.error;
         else if (data.message) errorMsg = data.message;
       } catch {
-        if (response.status === 404) {
+        if (response.status === 405) {
+          errorMsg = `HTTP 405 Method Not Allowed at ${url}. Ensure requests are routed to the Express backend (${PRODUCTION_BACKEND_URL}) rather than a static hosting domain.`;
+        } else if (response.status === 404) {
           const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
           if (!isLocal && API_BASE === '/api') {
-            errorMsg = `API Endpoint Not Found (404): The frontend is calling relative path '${url}' on its own static domain because VITE_API_URL is missing in your Vercel Environment Variables. Please set VITE_API_URL to your deployed backend URL (e.g. https://<backend-app>.vercel.app) and redeploy the frontend with 'Clear build cache'.`;
+            errorMsg = `API Endpoint Not Found (404): The frontend is calling relative path '${url}' on its own static domain because VITE_API_URL is missing in your Vercel Environment Variables. Please set VITE_API_URL to your deployed backend URL (${PRODUCTION_BACKEND_URL}) and redeploy the frontend with 'Clear build cache'.`;
           } else {
             errorMsg = `API Endpoint Not Found (404) at ${url}. Please verify your backend deployment and routes.`;
           }
