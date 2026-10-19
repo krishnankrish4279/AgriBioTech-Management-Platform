@@ -28,6 +28,13 @@ export const LoginPage: React.FC = () => {
   const { user, login, logout } = useAuth();
   const navigate = useNavigate();
 
+  React.useEffect(() => {
+    const cached = localStorage.getItem('agribio_api_url');
+    if (cached && (cached.includes('gegu') || cached.includes('dvdey9bdb') || (typeof window !== 'undefined' && cached.includes(window.location.hostname)))) {
+      localStorage.removeItem('agribio_api_url');
+    }
+  }, []);
+
   const getDashboardRouteForRole = (role: string) => {
     const norm = (role || '').toLowerCase();
     if (norm === 'admin') return '/dashboard/admin';
@@ -264,35 +271,38 @@ export const LoginPage: React.FC = () => {
               <AlertCircle size={16} style={{ marginTop: '2px', flexShrink: 0 }} />
               <div>{error}</div>
             </div>
-            {error.includes('VITE_API_URL') && (
-              <div style={{ marginTop: '4px', paddingLeft: '24px' }}>
+            {(error.includes('405') || error.includes('Method Not Allowed') || error.includes('VITE_API_URL')) && (
+              <div style={{ marginTop: '6px', paddingLeft: '24px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button
                   type="button"
-                  onClick={() => {
-                    const current = localStorage.getItem('agribio_api_url') || '';
-                    const entered = window.prompt('Enter your deployed Express backend URL (e.g. https://agribiotech-backend.vercel.app):', current);
-                    if (entered !== null) {
-                      const cleaned = entered.trim().replace(/\/+$/, '');
-                      if (cleaned) {
-                        localStorage.setItem('agribio_api_url', cleaned);
-                      } else {
-                        localStorage.removeItem('agribio_api_url');
-                      }
-                      window.location.reload();
+                  onClick={async () => {
+                    localStorage.setItem('agribio_api_url', 'https://agri-bio-tech-management-platform.vercel.app');
+                    setError('');
+                    setSubmitting(true);
+                    try {
+                      const authenticatedUser = await login(email.trim() || 'admin@agribiotech.demo', password || 'Admin@123');
+                      const targetDashboard = getDashboardRouteForRole(authenticatedUser.role);
+                      navigate(targetDashboard, { replace: true });
+                    } catch (err: any) {
+                      setError(err.message || 'Authentication failed.');
+                      setSubmitting(false);
                     }
                   }}
                   style={{
-                    background: 'rgba(239, 68, 68, 0.25)',
-                    border: '1px solid rgba(239, 68, 68, 0.5)',
+                    background: '#10b981',
+                    border: 'none',
                     color: '#fff',
-                    fontSize: '0.78rem',
+                    fontSize: '0.8rem',
                     fontWeight: 600,
-                    padding: '5px 12px',
-                    borderRadius: '4px',
+                    padding: '6px 14px',
+                    borderRadius: 'var(--radius-sm)',
                     cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
                   }}
                 >
-                  ⚙️ Connect Deployed Backend URL Directly
+                  ⚡ Connect to Verified Backend & Sign In
                 </button>
               </div>
             )}

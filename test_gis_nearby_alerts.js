@@ -174,10 +174,10 @@ async function runTests() {
   // --------------------------------------------------------------------------
   // TEST 4: ACCEPTANCE TEST 4 & 5: DAILY LOCATION UPDATE & CACHING LOGIC
   // --------------------------------------------------------------------------
-  console.log('\n--- ACCEPTANCE TEST 4 & 5: UPDATE LOCATION ONLY ONCE PER DAY ---');
   const now = Date.now();
   assert(isRefreshedToday(now) === true, 'Timestamp from today is correctly identified as refreshed today');
-  assert(isRefreshedToday(now - 1000 * 60 * 30) === true, 'Timestamp from 30 mins ago is identified as refreshed today');
+  // Use a timestamp guaranteed to be earlier today (e.g. 5 seconds ago or same calendar day)
+  assert(isRefreshedToday(now - 1000 * 5) === true, 'Recent timestamp from today is identified as refreshed today');
 
   // Yesterday / previous calendar day
   const yesterday = now - 24 * 3600 * 1000 - 1000 * 60 * 60; // >24h ago

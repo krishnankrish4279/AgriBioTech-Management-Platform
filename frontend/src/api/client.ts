@@ -31,19 +31,32 @@ export const getApiBase = (): string => {
   let envUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').trim();
 
   // Runtime fallback via localStorage if set
-  if (!envUrl && typeof window !== 'undefined') {
+  if (typeof window !== 'undefined') {
     const override = localStorage.getItem('agribio_api_url') || sessionStorage.getItem('agribio_api_url');
     if (override && override.trim()) {
       envUrl = override.trim();
     }
-  }
 
-  // Prevent sending API requests to the static frontend domain on Vercel (causes 405 Method Not Allowed)
-  if (!envUrl && typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
-    if (!isLocal) {
-      envUrl = PRODUCTION_BACKEND_URL;
+
+    if (isLocal) {
+      if (!envUrl) return '/api';
+    } else {
+      // In production on Vercel:
+      // If envUrl is missing, or points to the frontend domain itself (e.g. contains current hostname,
+      // 'gegu', 'dvdey9bdb', or any non-backend vercel.app domain), override it with PRODUCTION_BACKEND_URL!
+      const isLoopbackOrBroken =
+        !envUrl ||
+        envUrl === '/api' ||
+        envUrl.includes(hostname) ||
+        envUrl.includes('gegu') ||
+        envUrl.includes('dvdey9bdb') ||
+        (envUrl.includes('vercel.app') && !envUrl.includes('agri-bio-tech-management-platform.vercel.app'));
+
+      if (isLoopbackOrBroken) {
+        envUrl = PRODUCTION_BACKEND_URL;
+      }
     }
   }
 
@@ -94,32 +107,66 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   };
 
   const currentBase = getApiBase();
-  const url = `${currentBase}${endpoint}`;
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  let url = `${currentBase}${endpoint}`;
+  let response: Response;
 
-    if (!response.ok) {
-      let errorMsg = `HTTP Error ${response.status}`;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+    });
+  } catch (netErr: any) {
+    if (!url.startsWith(PRODUCTION_BACKEND_URL)) {
+      const fallbackUrl = `${PRODUCTION_BACKEND_URL}/api${endpoint.startsWith('/api') ? endpoint.slice(4) : endpoint}`;
       try {
-        const data = await response.json();
-        if (data.error) errorMsg = data.error;
-        else if (data.message) errorMsg = data.message;
+        response = await fetch(fallbackUrl, { ...options, headers });
+        url = fallbackUrl;
       } catch {
-        if (response.status === 405) {
-          errorMsg = `HTTP 405 Method Not Allowed at ${url}. Ensure requests are routed to the Express backend (${PRODUCTION_BACKEND_URL}) rather than a static hosting domain.`;
-        } else if (response.status === 404) {
-          const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-          if (!isLocal && API_BASE === '/api') {
-            errorMsg = `API Endpoint Not Found (404): The frontend is calling relative path '${url}' on its own static domain because VITE_API_URL is missing in your Vercel Environment Variables. Please set VITE_API_URL to your deployed backend URL (${PRODUCTION_BACKEND_URL}) and redeploy the frontend with 'Clear build cache'.`;
-          } else {
-            errorMsg = `API Endpoint Not Found (404) at ${url}. Please verify your backend deployment and routes.`;
-          }
-        }
+        throw netErr;
       }
-      throw new Error(errorMsg);
+    } else {
+      throw netErr;
     }
+  }
+
+  // Automatic transparent failover on 405 Method Not Allowed or 404:
+  // If the request hit a static frontend host instead of the Express backend,
+  // transparently fail over to the verified production backend.
+  if ((response.status === 405 || response.status === 404) && !url.startsWith(PRODUCTION_BACKEND_URL)) {
+    console.warn(`[API Client] Endpoint ${url} returned ${response.status}. Automatically failing over to production backend ${PRODUCTION_BACKEND_URL}...`);
+    const fallbackUrl = `${PRODUCTION_BACKEND_URL}/api${endpoint.startsWith('/api') ? endpoint.slice(4) : endpoint}`;
+    try {
+      const fallbackResponse = await fetch(fallbackUrl, {
+        ...options,
+        headers,
+      });
+      if (fallbackResponse.ok || fallbackResponse.status === 401 || fallbackResponse.status === 400 || fallbackResponse.status === 403) {
+        if (typeof window !== 'undefined' && (fallbackResponse.ok || fallbackResponse.status === 401)) {
+          localStorage.setItem('agribio_api_url', PRODUCTION_BACKEND_URL);
+        }
+        response = fallbackResponse;
+        url = fallbackUrl;
+      }
+    } catch (fallbackErr) {
+      console.error('[API Client] Failover attempt failed:', fallbackErr);
+    }
+  }
+
+  if (!response.ok) {
+    let errorMsg = `HTTP Error ${response.status}`;
+    try {
+      const data = await response.json();
+      if (data.error) errorMsg = data.error;
+      else if (data.message) errorMsg = data.message;
+    } catch {
+      if (response.status === 405) {
+        errorMsg = `HTTP 405 Method Not Allowed at ${url}. Ensure requests are routed to the Express backend (${PRODUCTION_BACKEND_URL}) rather than a static hosting domain.`;
+      } else if (response.status === 404) {
+        errorMsg = `API Endpoint Not Found (404) at ${url}.`;
+      }
+    }
+    throw new Error(errorMsg);
+  }
 
   return response.json();
 }
