@@ -37,6 +37,15 @@ router.get('/users', authenticate, requireRole(['admin']), authController.getUse
 router.post('/users', authenticate, requireRole(['admin']), authController.createUser);
 router.put('/users/:id', authenticate, requireRole(['admin']), authController.updateUser);
 router.delete('/users/:id', authenticate, requireRole(['admin']), authController.deleteUser);
+router.post('/admin/seed', authenticate, requireRole(['admin']), async (_req, res) => {
+  try {
+    const { ensureDemoUsers } = await import('../config/database');
+    await ensureDemoUsers(true);
+    res.json({ success: true, message: 'Production demo data and user hashes successfully synchronized.' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to seed demo data', message: err.message });
+  }
+});
 
 // Crop Variety Management (CRUD)
 router.get('/varieties', optionalAuth, varietyController.getVarieties);
