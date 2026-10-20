@@ -205,7 +205,7 @@ export const FarmerPortalView: React.FC = () => {
               <Tractor size={18} /> Farmer Advisory & Cultivation Portal
             </div>
             <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', marginTop: '6px' }}>
-              Vanakkam, {farmer?.fullName || user?.name}!
+              Welcome, {farmer?.fullName || user?.name}!
             </h1>
             <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', maxWidth: '650px', lineHeight: 1.45, marginTop: '4px' }}>
               Welcome to your simple farm care desk. You can monitor your registered plots, report crop problems to your agronomist in 1 minute, and receive expert biological solutions.
