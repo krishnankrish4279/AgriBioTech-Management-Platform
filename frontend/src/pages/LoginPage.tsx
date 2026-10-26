@@ -351,13 +351,13 @@ export const LoginPage: React.FC = () => {
                 <Lock size={12} color="#10b981" /> Registered Demonstration Accounts:
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '0.73rem' }}>
-                <div style={{ color: 'var(--text-muted)' }}>👑 Admin (நிர்வாகி): <span style={{ color: '#c4b5fd' }}>admin@agribiotech.demo</span></div>
-                <div style={{ color: 'var(--text-muted)' }}>🌾 Agronomist (வேளாண் அதிகாரி): <span style={{ color: '#6ee7b7' }}>agronomist@agribiotech.demo</span></div>
-                <div style={{ color: 'var(--text-muted)' }}>🧬 Scientist (உயிரி தொழில்நுட்பம்): <span style={{ color: '#67e8f9' }}>scientist@agribiotech.demo</span></div>
-                <div style={{ color: 'var(--text-muted)' }}>🚜 Farmer (விவசாயி): <span style={{ color: '#fde68a' }}>farmer@agribiotech.demo</span></div>
+                <div style={{ color: 'var(--text-muted)' }}>👑 Admin (நிர்வாகி): <span style={{ color: '#c4b5fd' }}>admin@agribiotech.demo</span> <span style={{ color: '#94a3b8' }}>(Admin@123)</span></div>
+                <div style={{ color: 'var(--text-muted)' }}>🌾 Agronomist (வேளாண் அதிகாரி): <span style={{ color: '#6ee7b7' }}>agronomist@agribiotech.demo</span> <span style={{ color: '#94a3b8' }}>(Agronomist@123)</span></div>
+                <div style={{ color: 'var(--text-muted)' }}>🧬 Scientist (உயிரி தொழில்நுட்பம்): <span style={{ color: '#67e8f9' }}>scientist@agribiotech.demo</span> <span style={{ color: '#94a3b8' }}>(Scientist@123)</span></div>
+                <div style={{ color: 'var(--text-muted)' }}>🚜 Farmer (விவசாயி): <span style={{ color: '#fde68a' }}>farmer@agribiotech.demo</span> <span style={{ color: '#94a3b8' }}>(Farmer@123)</span></div>
               </div>
               <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: '8px', fontStyle: 'italic' }}>
-                Demo Password / கடவுச்சொல்: <strong style={{ color: '#38bdf8' }}>password123</strong> • All accounts require manual email/password entry.
+                Demo Passwords / மாதிரி கடவுச்சொல்: <strong style={{ color: '#38bdf8' }}>Role@123</strong> (e.g., <code style={{ color: '#fde68a' }}>Farmer@123</code> for Farmer) • Case sensitive.
               </div>
             </div>
 
