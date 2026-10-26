@@ -15,6 +15,7 @@ import { FarmersPage } from './pages/FarmersPage';
 import { AdvisoryPage } from './pages/AdvisoryPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { LoginPage } from './pages/LoginPage';
+import { DiseaseReportDetailPage } from './pages/DiseaseReportDetailPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[] }> = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -194,6 +195,26 @@ export const App: React.FC = () => {
                 <ProtectedRoute>
                   <MainLayout>
                     <DiseasePage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/disease-surveillance/:id"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <DiseaseReportDetailPage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/diseases/:id"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <DiseaseReportDetailPage />
                   </MainLayout>
                 </ProtectedRoute>
               }

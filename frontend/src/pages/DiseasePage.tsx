@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { DiseaseCase, Disease } from '../types';
 import { DiseaseMap } from '../components/disease/DiseaseMap';
@@ -9,6 +10,7 @@ import { ShieldAlert, Plus, MapPin, Calendar, Sprout, Search, RefreshCw, Eye, Ch
 import { useAuth } from '../context/AuthContext';
 
 export const DiseasePage: React.FC = () => {
+  const navigate = useNavigate();
   const [cases, setCases] = useState<DiseaseCase[]>([]);
   const [catalog, setCatalog] = useState<Disease[]>([]);
   const [search, setSearch] = useState('');
@@ -118,8 +120,7 @@ export const DiseasePage: React.FC = () => {
           loading={loading}
           error={error}
           onSelectCase={(c) => {
-            setSelectedCase(c);
-            setShowDetailModal(true);
+            navigate(`/disease-surveillance/${c.id}`);
           }}
           onRetry={loadCases}
           onOpenReportModal={() => setShowReportModal(true)}
@@ -376,14 +377,11 @@ export const DiseasePage: React.FC = () => {
 
                   <div style={{ display: 'flex', gap: '6px' }}>
                     <button
-                      onClick={() => {
-                        setSelectedCase(c);
-                        setShowDetailModal(true);
-                      }}
+                      onClick={() => navigate(`/disease-surveillance/${c.id}`)}
                       className="btn btn-secondary btn-sm"
-                      title="View full report and epidemiological notes"
+                      title="View full surveillance report"
                     >
-                      <Eye size={13} /> Details
+                      <Eye size={13} /> Full Report
                     </button>
                     {c.status === 'ACTIVE' && (
                       <button

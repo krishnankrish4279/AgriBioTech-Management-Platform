@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { DiseaseReport, Disease, Farm, Farmer, User, Notification, FarmerAdvisory, ActivityLog, BiotechnologyRecommendation } from '../models';
 import { AuthenticatedRequest } from '../middleware/auth';
 
@@ -278,6 +279,10 @@ export const getDiseaseCases = async (req: Request, res: Response): Promise<void
 export const getDiseaseCaseById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      res.status(404).json({ error: 'Disease case not found' });
+      return;
+    }
     const c: any = await DiseaseReport.findById(id)
       .populate({
         path: 'farmId',
@@ -689,6 +694,10 @@ export const reportFarmerProblem = async (req: AuthenticatedRequest, res: Respon
 export const updateDiseaseCase = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      res.status(404).json({ error: 'Disease case not found' });
+      return;
+    }
     const { status, severity, symptoms, diseaseName, recommendedTreatment, resolvedAt, latitude, longitude, lat, lng, assignedAdvisorId, syncWithFarmLocation } = req.body;
 
     const updateData: any = {};
@@ -819,6 +828,10 @@ export const syncDiseaseCoordinates = async (_req: Request, res: Response): Prom
 export const deleteDiseaseCase = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      res.status(404).json({ error: 'Disease case not found' });
+      return;
+    }
     const deleted = await DiseaseReport.findByIdAndDelete(id);
     if (!deleted) {
       res.status(404).json({ error: 'Disease case not found' });

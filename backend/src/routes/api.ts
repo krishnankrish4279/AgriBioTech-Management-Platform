@@ -62,6 +62,7 @@ router.get('/diseases/catalog', optionalAuth, diseaseController.getDiseasesCatal
 router.get('/diseases/cases', optionalAuth, diseaseController.getDiseaseCases);
 router.get('/diseases/cases/:id', optionalAuth, diseaseController.getDiseaseCaseById);
 router.get('/diseases/:id', optionalAuth, diseaseController.getDiseaseCaseById);
+router.get('/disease-surveillance/:id', optionalAuth, diseaseController.getDiseaseCaseById);
 router.post('/diseases/cases', authenticate, upload.single('image'), diseaseController.reportDiseaseCase);
 router.put('/diseases/cases/:id', authenticate, requireRole(['admin', 'agronomist', 'biotech_expert']), diseaseController.updateDiseaseCase);
 router.put('/diseases/:id', authenticate, requireRole(['admin', 'agronomist', 'biotech_expert']), diseaseController.updateDiseaseCase);

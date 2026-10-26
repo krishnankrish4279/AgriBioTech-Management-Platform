@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { DiseaseCase } from '../../types';
@@ -208,6 +209,20 @@ export const DiseaseMap: React.FC<DiseaseMapProps> = ({
   onRetry,
   onOpenReportModal,
 }) => {
+  const navigate = useNavigate();
+
+  const handleOpenReport = (c: DiseaseCase, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    if (onSelectCase) {
+      onSelectCase(c);
+    } else {
+      navigate(`/disease-surveillance/${c.id}`);
+    }
+  };
+
   // Severity filter for disease markers
   const [selectedFilter, setSelectedFilter] = useState<string>('ALL');
 
@@ -1335,24 +1350,30 @@ export const DiseaseMap: React.FC<DiseaseMapProps> = ({
                         </div>
                       )}
 
-                      {onSelectCase && (
-                        <button
-                          onClick={() => onSelectCase(c)}
-                          style={{
-                            width: '100%',
-                            background: '#0f172a',
-                            color: '#fff',
-                            border: 'none',
-                            padding: '7px 10px',
-                            borderRadius: '6px',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          View Full Surveillance Report
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenReport(c, e)}
+                        style={{
+                          width: '100%',
+                          background: '#0f172a',
+                          color: '#fff',
+                          border: 'none',
+                          padding: '7px 10px',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          transition: 'background 0.2s ease',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#1e293b')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = '#0f172a')}
+                      >
+                        <Eye size={12} /> View Full Surveillance Report
+                      </button>
                     </div>
                   </Popup>
                 </Marker>
@@ -2034,23 +2055,22 @@ export const DiseaseMap: React.FC<DiseaseMapProps> = ({
                     >
                       <Crosshair size={13} /> Focus on Map
                     </button>
-                    {onSelectCase && (
-                      <button
-                        onClick={() => onSelectCase(alert)}
-                        className="btn btn-primary btn-sm"
-                        style={{
-                          flex: 1,
-                          fontSize: '0.72rem',
-                          padding: '6px 8px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '5px',
-                        }}
-                      >
-                        <Eye size={13} /> View Details
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenReport(alert, e)}
+                      className="btn btn-primary btn-sm"
+                      style={{
+                        flex: 1,
+                        fontSize: '0.72rem',
+                        padding: '6px 8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '5px',
+                      }}
+                    >
+                      <Eye size={13} /> View Full Report
+                    </button>
                   </div>
                 </div>
               );
