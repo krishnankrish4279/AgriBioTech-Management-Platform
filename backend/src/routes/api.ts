@@ -27,6 +27,7 @@ router.post('/upload', upload.single('image'), (req, res) => {
 // Authentication & User Management Routes
 router.post('/auth/login', authController.login);
 router.post('/auth/demo-login', authController.demoLogin);
+router.post('/auth/demo-session', authController.demoSession);
 router.post('/auth/register', authController.register);
 router.post('/auth/register-admin', authController.registerAdmin);
 router.post('/auth/forgot-password', authController.forgotPassword);

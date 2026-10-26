@@ -176,6 +176,11 @@ export const api = {
   auth: {
     login: (body: { email: string; password: string }) =>
       request<{ token: string; user: User }>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
+    demoSession: (role: string) =>
+      request<{ token: string; user: User; message: string }>('/auth/demo-session', {
+        method: 'POST',
+        body: JSON.stringify({ role }),
+      }),
     register: (body: any) =>
       request<{ token: string; user: User }>('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
     registerAdmin: (body: { name: string; email: string; password: string; phone?: string }) =>

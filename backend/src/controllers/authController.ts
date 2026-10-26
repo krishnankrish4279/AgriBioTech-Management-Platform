@@ -61,6 +61,32 @@ export const validatePasswordStrength = (password: string): { valid: boolean; re
   return { valid: true };
 };
 
+// Authorized Demonstration Accounts configuration
+// Evaluators may authenticate demo sandbox personas without triggering Google Chrome Password Manager's public breach detection.
+// Notice: Passwords stored in database are NOT changed automatically; the original credentials remain active.
+export const DEMO_ACCOUNTS: Record<string, { role: string; securePass: string; name: string }> = {
+  'farmer@agribiotech.demo': {
+    role: 'farmer',
+    securePass: 'AgriBio#Farmer2026!',
+    name: 'Ramesh Kumar (Demo Farmer)',
+  },
+  'agronomist@agribiotech.demo': {
+    role: 'agronomist',
+    securePass: 'AgriBio#Agro2026!',
+    name: 'Dr. S. Priya (Demo Agronomist)',
+  },
+  'scientist@agribiotech.demo': {
+    role: 'biotech_expert',
+    securePass: 'AgriBio#Biotech2026!',
+    name: 'Dr. Arvind Swaminathan (Demo Scientist)',
+  },
+  'admin@agribiotech.demo': {
+    role: 'admin',
+    securePass: 'AgriBio#Admin2026!',
+    name: 'System Administrator (Demo Admin)',
+  },
+};
+
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
@@ -76,7 +102,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    let isMatch = await bcrypt.compare(password, user.passwordHash);
+
+    // If bcrypt compare does not match, allow the unbreached demo passphrase ONLY for verified demo accounts
+    if (!isMatch && DEMO_ACCOUNTS[cleanEmail] && password === DEMO_ACCOUNTS[cleanEmail].securePass) {
+      isMatch = true;
+    }
+
     if (!isMatch) {
       res.status(401).json({ error: 'Invalid email or password' });
       return;
@@ -107,6 +139,63 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   } catch (error: any) {
     console.error('Login error:', error.message);
     res.status(500).json({ error: 'Internal server error during login' });
+  }
+};
+
+export const demoSession = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { role } = req.body;
+    if (!role || typeof role !== 'string') {
+      res.status(400).json({ error: 'Target demo role is required' });
+      return;
+    }
+
+    const normRole = role.toLowerCase().trim();
+    const demoEntry = Object.entries(DEMO_ACCOUNTS).find(([_, config]) => config.role === normRole);
+    if (!demoEntry) {
+      res.status(400).json({ error: `Invalid demo role: ${role}. Available roles: farmer, agronomist, scientist, admin.` });
+      return;
+    }
+
+    const [demoEmail] = demoEntry;
+    // Security check: Only accounts strictly ending in @agribiotech.demo are permitted
+    if (!demoEmail.endsWith('@agribiotech.demo')) {
+      res.status(403).json({ error: 'Real farmer accounts cannot use demo session.' });
+      return;
+    }
+
+    const user = await User.findOne({ email: demoEmail }).lean();
+    if (!user) {
+      res.status(404).json({ error: `Demo account for ${normRole} not found in database.` });
+      return;
+    }
+
+    const tokenPayload = {
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    };
+
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
+    const farmerProfile = await Farmer.findOne({ userId: user._id }).lean();
+
+    res.json({
+      token,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatarUrl: user.avatarUrl,
+        phone: user.phone,
+        farmerProfile,
+      },
+      message: `Demo session established for ${user.name}.`,
+    });
+  } catch (error: any) {
+    console.error('Demo session error:', error.message);
+    res.status(500).json({ error: 'Internal server error during demo session creation' });
   }
 };
 

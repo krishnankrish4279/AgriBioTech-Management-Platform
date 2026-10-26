@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<User>;
+  demoSessionLogin: (role: string) => Promise<User>;
   logout: () => void;
   isAdmin: boolean;
   isAgronomist: boolean;
@@ -51,6 +52,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return res.user;
   };
 
+  const demoSessionLogin = async (role: string): Promise<User> => {
+    const res = await api.auth.demoSession(role);
+    localStorage.setItem('agribio_token', res.token);
+    setUser(res.user);
+    return res.user;
+  };
+
   const logout = () => {
     localStorage.removeItem('agribio_token');
     sessionStorage.clear();
@@ -69,6 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         loading,
         login,
+        demoSessionLogin,
         logout,
         isAdmin,
         isAgronomist,

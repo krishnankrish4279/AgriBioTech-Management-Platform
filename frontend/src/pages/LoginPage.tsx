@@ -44,7 +44,7 @@ export const LoginPage: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const { user, login, logout } = useAuth();
+  const { user, login, logout, demoSessionLogin } = useAuth();
   const navigate = useNavigate();
 
   React.useEffect(() => {
@@ -72,6 +72,23 @@ export const LoginPage: React.FC = () => {
     special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd),
     notBreached: !['farmer@123', 'admin@123', 'agronomist@123', 'scientist@123', 'password', 'password123', '12345678'].includes(pwd.toLowerCase().trim()),
   });
+
+  // Handle Quick Demo Sandbox Sign-In (avoids typing exposed dictionary passwords into browser password manager)
+  const handleQuickDemoLogin = async (role: string) => {
+    if (submitting) return;
+    setSubmitting(true);
+    setError('');
+    setSuccessMsg('');
+
+    try {
+      const authenticatedUser = await demoSessionLogin(role);
+      const targetDashboard = getDashboardRouteForRole(authenticatedUser.role);
+      navigate(targetDashboard, { replace: true });
+    } catch (err: any) {
+      setError(err.message || 'Demo session creation failed.');
+      setSubmitting(false);
+    }
+  };
 
   // Handle Standard Sign-in
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -481,8 +498,94 @@ export const LoginPage: React.FC = () => {
                 <div style={{ color: 'var(--text-muted)' }}>🧬 Scientist: <span style={{ color: '#67e8f9' }}>scientist@agribiotech.demo</span></div>
                 <div style={{ color: 'var(--text-muted)' }}>🚜 Farmer: <span style={{ color: '#fde68a' }}>farmer@agribiotech.demo</span></div>
               </div>
-              <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: '8px', fontStyle: 'italic' }}>
-                Every user must enter their registered email address and password to authenticate.
+
+              {/* 1-Click Demo Sandbox Sign-In buttons */}
+              <div style={{
+                marginTop: '10px',
+                paddingTop: '10px',
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+              }}>
+                <div style={{ fontSize: '0.69rem', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>
+                  1-Click Demo Sign-In (Direct Sandbox Access):
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDemoLogin('farmer')}
+                    disabled={submitting}
+                    style={{
+                      background: 'rgba(234, 179, 8, 0.1)',
+                      border: '1px solid rgba(234, 179, 8, 0.25)',
+                      color: '#fde047',
+                      padding: '5px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    🚜 Sign in as Farmer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDemoLogin('agronomist')}
+                    disabled={submitting}
+                    style={{
+                      background: 'rgba(16, 185, 129, 0.1)',
+                      border: '1px solid rgba(16, 185, 129, 0.25)',
+                      color: '#6ee7b7',
+                      padding: '5px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    🌾 Sign in as Agronomist
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDemoLogin('biotech_expert')}
+                    disabled={submitting}
+                    style={{
+                      background: 'rgba(6, 182, 212, 0.1)',
+                      border: '1px solid rgba(6, 182, 212, 0.25)',
+                      color: '#67e8f9',
+                      padding: '5px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    🧬 Sign in as Scientist
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDemoLogin('admin')}
+                    disabled={submitting}
+                    style={{
+                      background: 'rgba(168, 85, 247, 0.1)',
+                      border: '1px solid rgba(168, 85, 247, 0.25)',
+                      color: '#c4b5fd',
+                      padding: '5px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    👑 Sign in as Admin
+                  </button>
+                </div>
               </div>
             </div>
 
