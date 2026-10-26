@@ -127,10 +127,10 @@ export const LoginPage: React.FC = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '24px',
+      padding: 'clamp(16px, 4vw, 24px)',
       background: 'radial-gradient(circle at 50% 10%, rgba(16, 185, 129, 0.15), transparent 70%), #0a0f1d',
     }}>
-      <div className="card-glass" style={{ maxWidth: '480px', width: '100%', padding: '36px' }}>
+      <div className="card-glass" style={{ maxWidth: '480px', width: '100%', padding: 'clamp(24px, 5vw, 36px)', borderRadius: 'var(--radius-lg)' }}>
         {/* Brand Logo & Header */}
         <div style={{ textAlign: 'center', marginBottom: '22px' }}>
           <div style={{
@@ -258,54 +258,17 @@ export const LoginPage: React.FC = () => {
           <div style={{
             background: 'rgba(239, 68, 68, 0.15)',
             border: '1px solid rgba(239, 68, 68, 0.4)',
-            padding: '12px 14px',
+            padding: '10px 14px',
             borderRadius: 'var(--radius-md)',
             color: '#f87171',
             fontSize: '0.84rem',
             marginBottom: '18px',
             display: 'flex',
-            flexDirection: 'column',
+            alignItems: 'center',
             gap: '8px',
           }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-              <AlertCircle size={16} style={{ marginTop: '2px', flexShrink: 0 }} />
-              <div>{error}</div>
-            </div>
-            {(error.includes('405') || error.includes('Method Not Allowed') || error.includes('VITE_API_URL')) && (
-              <div style={{ marginTop: '6px', paddingLeft: '24px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    localStorage.setItem('agribio_api_url', 'https://agri-bio-tech-management-platform.vercel.app');
-                    setError('');
-                    setSubmitting(true);
-                    try {
-                      const authenticatedUser = await login(email.trim() || 'admin@agribiotech.demo', password || 'Admin@123');
-                      const targetDashboard = getDashboardRouteForRole(authenticatedUser.role);
-                      navigate(targetDashboard, { replace: true });
-                    } catch (err: any) {
-                      setError(err.message || 'Authentication failed.');
-                      setSubmitting(false);
-                    }
-                  }}
-                  style={{
-                    background: '#10b981',
-                    border: 'none',
-                    color: '#fff',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    padding: '6px 14px',
-                    borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  ⚡ Connect to Verified Backend & Sign In
-                </button>
-              </div>
-            )}
+            <AlertCircle size={16} style={{ flexShrink: 0 }} />
+            <div>{error}</div>
           </div>
         )}
 
@@ -350,14 +313,14 @@ export const LoginPage: React.FC = () => {
               }}>
                 <Lock size={12} color="#10b981" /> Registered Demonstration Accounts:
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '0.73rem' }}>
-                <div style={{ color: 'var(--text-muted)' }}>👑 Admin: <span style={{ color: '#c4b5fd' }}>admin@agribiotech.demo</span> <span style={{ color: '#94a3b8' }}>(Admin@123)</span></div>
-                <div style={{ color: 'var(--text-muted)' }}>🌾 Agronomist: <span style={{ color: '#6ee7b7' }}>agronomist@agribiotech.demo</span> <span style={{ color: '#94a3b8' }}>(Agronomist@123)</span></div>
-                <div style={{ color: 'var(--text-muted)' }}>🧬 Scientist: <span style={{ color: '#67e8f9' }}>scientist@agribiotech.demo</span> <span style={{ color: '#94a3b8' }}>(Scientist@123)</span></div>
-                <div style={{ color: 'var(--text-muted)' }}>🚜 Farmer: <span style={{ color: '#fde68a' }}>farmer@agribiotech.demo</span> <span style={{ color: '#94a3b8' }}>(Farmer@123)</span></div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '6px', fontSize: '0.73rem' }}>
+                <div style={{ color: 'var(--text-muted)' }}>👑 Admin: <span style={{ color: '#c4b5fd' }}>admin@agribiotech.demo</span></div>
+                <div style={{ color: 'var(--text-muted)' }}>🌾 Agronomist: <span style={{ color: '#6ee7b7' }}>agronomist@agribiotech.demo</span></div>
+                <div style={{ color: 'var(--text-muted)' }}>🧬 Scientist: <span style={{ color: '#67e8f9' }}>scientist@agribiotech.demo</span></div>
+                <div style={{ color: 'var(--text-muted)' }}>🚜 Farmer: <span style={{ color: '#fde68a' }}>farmer@agribiotech.demo</span></div>
               </div>
               <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: '8px', fontStyle: 'italic' }}>
-                Demonstration Passwords: <strong style={{ color: '#38bdf8' }}>Role@123</strong> (e.g., <code style={{ color: '#fde68a' }}>Farmer@123</code> for Farmer) • Case sensitive.
+                Every user must enter their registered email address and password to authenticate.
               </div>
             </div>
 
