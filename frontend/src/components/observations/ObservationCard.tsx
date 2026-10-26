@@ -70,7 +70,7 @@ export const ObservationCard: React.FC<ObservationCardProps> = ({
           borderRadius: '9999px',
           padding: '3px 10px',
         }}>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 600 }}>HEALTH:</span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 600 }}>HEALTH / நலம்:</span>
           <span style={{ fontSize: '0.88rem', fontWeight: 800, color: scoreColor }}>
             {score}/10
           </span>
@@ -83,7 +83,7 @@ export const ObservationCard: React.FC<ObservationCardProps> = ({
           <MapPin size={15} color="#10b981" /> {observation.farm?.farmName}
         </div>
         <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '2px' }}>
-          Owner: {observation.farm?.farmer?.fullName} {observation.cropVariety ? `• Crop: ${observation.cropVariety.varietyName}` : ''}
+          Owner / உரிமையாளர்: {observation.farm?.farmer?.fullName} {observation.cropVariety ? `• Crop / பயிர்: ${observation.cropVariety.varietyName}` : ''}
         </div>
       </div>
 
@@ -105,11 +105,11 @@ export const ObservationCard: React.FC<ObservationCardProps> = ({
       {/* Soil moisture & Pest Symptoms */}
       <div style={{ display: 'flex', gap: '10px', fontSize: '0.75rem', marginBottom: '12px', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#38bdf8' }}>
-          <Droplets size={13} /> Soil: {observation.soilMoisture}
+          <Droplets size={13} /> Soil / மண்: {observation.soilMoisture}
         </div>
         {observation.pestSymptoms && (
           <div style={{ color: '#fbbf24' }}>
-            ⚠️ {observation.pestSymptoms}
+            ⚠️ Pest / பூச்சி பாதிப்பு: {observation.pestSymptoms}
           </div>
         )}
       </div>

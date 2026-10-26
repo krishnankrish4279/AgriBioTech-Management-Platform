@@ -66,10 +66,14 @@ export const VarietiesPage: React.FC = () => {
       <div className="page-header">
         <div>
           <h1 className="page-title">
-            <Sprout size={28} color="#10b981" /> Crop Variety Management
+            <Sprout size={28} color="#10b981" /> Crop & Seed Varieties • பயிர் மற்றும் விதை ரகங்கள்
           </h1>
           <p className="page-subtitle">
             Catalog and monitor genetically stacked, drought-resilient, and bio-fortified crop cultivars.
+            <br />
+            <span style={{ color: '#6ee7b7', fontSize: '0.82rem' }}>
+              அதிக விளைச்சல் தரும், வறட்சி மற்றும் பூச்சி தாங்கி வளரும் தேர்ந்தெடுக்கப்பட்ட விதை ரகங்கள்.
+            </span>
           </p>
         </div>
 
@@ -82,7 +86,7 @@ export const VarietiesPage: React.FC = () => {
               }}
               className="btn btn-primary"
             >
-              <Plus size={16} /> Register New Variety
+              <Plus size={16} /> Register New Variety / புதிய ரகம் சேர்க்க
             </button>
           )}
           <button onClick={loadVarieties} className="btn btn-secondary">
@@ -98,7 +102,7 @@ export const VarietiesPage: React.FC = () => {
           <input
             type="text"
             className="input-field search-input"
-            placeholder="Search crop name, variety, gene traits (e.g. Cry1Ac, Drought-X)..."
+            placeholder="Search crop name, variety, gene traits (e.g. Cotton, Cry1Ac)... / தேடுக..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -111,12 +115,12 @@ export const VarietiesPage: React.FC = () => {
             value={cropType}
             onChange={(e) => setCropType(e.target.value)}
           >
-            <option value="ALL">All Crop Types</option>
-            <option value="CEREAL">Cereals (Wheat, Rice, Maize)</option>
-            <option value="CASH_CROP">Cash Crops (Cotton)</option>
-            <option value="OILSEED">Oilseeds (Soybean, Mustard)</option>
-            <option value="PULSE">Pulses</option>
-            <option value="HORTICULTURE">Horticulture (Tomato)</option>
+            <option value="ALL">All Crop Types (அனைத்து பயிர்கள்)</option>
+            <option value="CEREAL">Cereals / தானியங்கள் (Rice, Wheat, Maize)</option>
+            <option value="CASH_CROP">Cash Crops / பணப்பயிர்கள் (Cotton)</option>
+            <option value="OILSEED">Oilseeds / எண்ணெய் வித்துக்கள் (Soybean)</option>
+            <option value="PULSE">Pulses / பருப்பு வகைகள்</option>
+            <option value="HORTICULTURE">Horticulture / தோட்டக்கலை (Chilli, Tomato)</option>
           </select>
 
           <select

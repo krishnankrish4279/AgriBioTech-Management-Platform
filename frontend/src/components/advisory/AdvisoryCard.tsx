@@ -3,6 +3,8 @@ import { FarmerAdvisory } from '../../types';
 import { MessageSquare, AlertTriangle, Droplets, Sprout, Wind, Dna, Check, User, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
+import { PriorityBadge } from '../common/Badge';
+
 interface AdvisoryCardProps {
   advisory: FarmerAdvisory;
   onMarkRead?: (id: string) => void;
@@ -17,16 +19,21 @@ export const AdvisoryCard: React.FC<AdvisoryCardProps> = ({
   const { isAgronomist, isAdmin } = useAuth();
   const canManage = isAgronomist || isAdmin;
 
-  const categoryIcons: Record<string, any> = {
-    DISEASE_ALERT: AlertTriangle,
-    IRRIGATION: Droplets,
-    NUTRIENT_MANAGEMENT: Sprout,
-    BIOTECH_INPUT: Dna,
-    WEATHER_ACTION: Wind,
-    GENERAL: MessageSquare,
+  const categoryConfig: Record<string, { label: string; tamil: string; icon: any }> = {
+    DISEASE_ALERT: { label: 'Disease Warning', tamil: 'நோய் எச்சரிக்கை', icon: AlertTriangle },
+    IRRIGATION: { label: 'Watering Advice', tamil: 'பாசன வழிகாட்டல்', icon: Droplets },
+    NUTRIENT_MANAGEMENT: { label: 'Soil Nutrition', tamil: 'உர மேலாண்மை', icon: Sprout },
+    BIOTECH_INPUT: { label: 'Bio-Inputs', tamil: 'இயற்கை உயிர் உரம்', icon: Dna },
+    WEATHER_ACTION: { label: 'Weather Alert', tamil: 'வானிலை எச்சரிக்கை', icon: Wind },
+    GENERAL: { label: 'General Advice', tamil: 'பொது ஆலோசனை', icon: MessageSquare },
   };
 
-  const Icon = categoryIcons[advisory.category] || MessageSquare;
+  const cat = categoryConfig[advisory.category] || {
+    label: advisory.category.replace('_', ' '),
+    tamil: 'விவசாய வழிகாட்டல்',
+    icon: MessageSquare,
+  };
+  const Icon = cat.icon;
 
   return (
     <div
@@ -57,18 +64,10 @@ export const AdvisoryCard: React.FC<AdvisoryCardProps> = ({
             alignItems: 'center',
             gap: '5px',
           }}>
-            <Icon size={13} color="#06b6d4" /> {advisory.category.replace('_', ' ')}
+            <Icon size={13} color="#06b6d4" /> {cat.label} • <span style={{ color: '#34d399', fontSize: '0.7rem' }}>{cat.tamil}</span>
           </span>
 
-          <span className={`badge ${
-            advisory.priority === 'URGENT'
-              ? 'badge-critical'
-              : advisory.priority === 'IMPORTANT'
-              ? 'badge-high'
-              : 'badge-low'
-          }`}>
-            {advisory.priority}
-          </span>
+          <PriorityBadge priority={advisory.priority} />
         </div>
 
         <div>

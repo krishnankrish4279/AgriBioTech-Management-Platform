@@ -28,35 +28,35 @@ interface FarmerReportProblemModalProps {
   farmer?: Farmer | null;
 }
 
-// Problem Type Options as defined in requirements
+// Problem Type Options as defined in requirements with farmer-friendly bilingual explanations
 const PROBLEM_TYPES = [
-  { id: 'Yellow leaves', label: 'Yellow leaves', icon: '🍂', desc: 'Leaves turning pale or yellow' },
-  { id: 'Leaf spots', label: 'Leaf spots', icon: '🟤', desc: 'Brown, dark, or rusty spots on foliage' },
-  { id: 'Insects/Pests', label: 'Insects/Pests', icon: '🐛', desc: 'Insects chewing leaves or burrowing stems' },
-  { id: 'Drying leaves', label: 'Drying leaves', icon: '🥀', desc: 'Wilting, curling, or burnt edges' },
-  { id: 'Poor growth', label: 'Poor growth', icon: '🌱', desc: 'Stunted plant height or poor flowering' },
-  { id: 'Other', label: 'Other', icon: '❓', desc: 'Different symptom not listed above' },
-  { id: "I don't know", label: "I don't know", icon: '🤷', desc: 'Unsure, need expert to inspect' },
+  { id: 'Yellow leaves', label: 'Yellow leaves (மஞ்சள் இலைகள்)', icon: '🍂', desc: 'Leaves turning pale or yellow / இலைகள் வெளுத்து மஞ்சள் நிறமாதல்' },
+  { id: 'Leaf spots', label: 'Leaf spots (இலைப்புள்ளி நோய்)', icon: '🟤', desc: 'Brown, dark, or rusty spots on foliage / இலைகளில் பழுப்பு அல்லது கருப்பு புள்ளிகள்' },
+  { id: 'Insects/Pests', label: 'Insects/Pests (பூச்சி தாக்குதல்)', icon: '🐛', desc: 'Insects chewing leaves or burrowing stems / புழு, வண்டு மற்றும் சாறு உறிஞ்சும் பூச்சிகள்' },
+  { id: 'Drying leaves', label: 'Drying leaves (இலை காய்ந்து போதல்)', icon: '🥀', desc: 'Wilting, curling, or burnt edges / நுனி இலைகள் கருகி வதங்கி போதல்' },
+  { id: 'Poor growth', label: 'Poor growth (வளர்ச்சி குறைவு)', icon: '🌱', desc: 'Stunted plant height or poor flowering / செடி வளர்ச்சி குன்றி பூக்காமல் இருத்தல்' },
+  { id: 'Other', label: 'Other (மற்றவை)', icon: '❓', desc: 'Different symptom not listed above / வேறு ஏதேனும் புதிய பயிர் பாதிப்பு' },
+  { id: "I don't know", label: "I don't know (தெரியவில்லை)", icon: '🤷', desc: 'Unsure, need expert to inspect / அதிகாரி நேரில் வந்து ஆய்வு செய்ய வேண்டும்' },
 ];
 
-// Affected Area Options as defined in requirements
+// Affected Area Options with bilingual hints
 const AFFECTED_AREAS = [
-  { id: 'Small area', label: 'Small area', badgeColor: '#10b981', hint: 'Just a few plants or one patch' },
-  { id: 'Some plants', label: 'Some plants', badgeColor: '#f59e0b', hint: 'Scattered across different rows' },
-  { id: 'Most of field', label: 'Most of field', badgeColor: '#ef4444', hint: 'Widespread across most of the crop' },
-  { id: 'Not sure', label: 'Not sure', badgeColor: '#6b7280', hint: 'Hard to tell, need field visit' },
+  { id: 'Small area', label: 'Small area (சிறிய பகுதி)', badgeColor: '#10b981', hint: 'Just a few plants or one patch / ஓரிரு செடிகள் மட்டும்' },
+  { id: 'Some plants', label: 'Some plants (சில இடங்களில்)', badgeColor: '#f59e0b', hint: 'Scattered across different rows / தோட்டத்தின் சில பகுதிகளில்' },
+  { id: 'Most of field', label: 'Most of field (பெரும்பாலான தோட்டம்)', badgeColor: '#ef4444', hint: 'Widespread across most of the crop / வயல் முழுவதும் பரவியுள்ளது' },
+  { id: 'Not sure', label: 'Not sure (தெரியவில்லை)', badgeColor: '#6b7280', hint: 'Hard to tell, need field visit / சரியாக கணிக்க முடியவில்லை' },
 ];
 
 const COMMON_CROPS = [
-  'Cotton',
-  'Rice (Paddy)',
-  'Chilli',
-  'Maize',
-  'Wheat',
-  'Soybean',
-  'Sugarcane',
-  'Vegetables',
-  'Other'
+  { id: 'Cotton', label: 'Cotton (பருத்தி)' },
+  { id: 'Rice (Paddy)', label: 'Rice / Paddy (நெல்)' },
+  { id: 'Chilli', label: 'Chilli (மிளகாய்)' },
+  { id: 'Maize', label: 'Maize (மக்காச்சோளம்)' },
+  { id: 'Wheat', label: 'Wheat (கோதுமை)' },
+  { id: 'Soybean', label: 'Soybean (சோயாபீன்)' },
+  { id: 'Sugarcane', label: 'Sugarcane (கரும்பு)' },
+  { id: 'Vegetables', label: 'Vegetables (காய்கறிகள்)' },
+  { id: 'Other', label: 'Other (மற்ற பயிர்கள்)' }
 ];
 
 export const FarmerReportProblemModal: React.FC<FarmerReportProblemModalProps> = ({
@@ -252,10 +252,10 @@ export const FarmerReportProblemModal: React.FC<FarmerReportProblemModalProps> =
             </div>
             <div>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', margin: 0 }}>
-                Report Crop Problem
+                Report Crop Problem / பயிர் பிரச்சனையை தெரிவிக்க
               </h2>
               <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '2px 0 0' }}>
-                Simple 1-minute report for your field agronomist & advisor
+                Simple 1-minute report for your field agronomist & advisor • வேளாண் அதிகாரிக்கு 1 நிமிடத்தில் தகவல்
               </p>
             </div>
           </div>
@@ -468,7 +468,7 @@ export const FarmerReportProblemModal: React.FC<FarmerReportProblemModalProps> =
               {/* 1. SELECT MY FARM / FIELD */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.92rem', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
-                  1. Select My Farm / Field <span style={{ color: '#ef4444' }}>*</span>
+                  1. Select My Farm / Field • உங்கள் விவசாய நிலத்தை தேர்வு செய்யவும் <span style={{ color: '#ef4444' }}>*</span>
                 </label>
 
                 {farms.length === 0 ? (
@@ -526,7 +526,7 @@ export const FarmerReportProblemModal: React.FC<FarmerReportProblemModalProps> =
                       >
                         <MapPin size={15} color="#10b981" />
                         <span>
-                          <strong>Location Auto-tagged:</strong> {currentFarm.locationAddress}
+                          <strong>Location Auto-tagged (தானியங்கி இருப்பிடம்):</strong> {currentFarm.locationAddress}
                           {currentFarm.latitude && currentFarm.longitude && (
                             <span style={{ opacity: 0.8, marginLeft: '6px' }}>
                               (GPS: {currentFarm.latitude.toFixed(4)}, {currentFarm.longitude.toFixed(4)})
@@ -542,16 +542,16 @@ export const FarmerReportProblemModal: React.FC<FarmerReportProblemModalProps> =
               {/* 2. SELECT CROP */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.92rem', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
-                  2. Select Crop <span style={{ color: '#ef4444' }}>*</span>
+                  2. Select Crop • பயிரை தேர்வு செய்யவும் <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {COMMON_CROPS.map((cropName) => {
-                    const isSelected = selectedCrop === cropName;
+                  {COMMON_CROPS.map((crop) => {
+                    const isSelected = selectedCrop === crop.id;
                     return (
                       <button
-                        key={cropName}
+                        key={crop.id}
                         type="button"
-                        onClick={() => setSelectedCrop(cropName)}
+                        onClick={() => setSelectedCrop(crop.id)}
                         style={{
                           background: isSelected ? '#10b981' : 'rgba(255, 255, 255, 0.04)',
                           color: isSelected ? '#fff' : '#e2e8f0',
@@ -564,7 +564,7 @@ export const FarmerReportProblemModal: React.FC<FarmerReportProblemModalProps> =
                           transition: 'all 0.15s ease',
                         }}
                       >
-                        {cropName}
+                        {crop.label}
                       </button>
                     );
                   })}
@@ -573,7 +573,7 @@ export const FarmerReportProblemModal: React.FC<FarmerReportProblemModalProps> =
                   <input
                     type="text"
                     className="input-field"
-                    placeholder="Enter crop name..."
+                    placeholder="Enter crop name... (பயிரின் பெயரை உள்ளிடவும்)"
                     value={customCrop}
                     onChange={(e) => setCustomCrop(e.target.value)}
                     style={{ marginTop: '10px' }}
@@ -585,7 +585,7 @@ export const FarmerReportProblemModal: React.FC<FarmerReportProblemModalProps> =
               {/* 3. SELECT PROBLEM TYPE */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.92rem', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
-                  3. Select Problem Type <span style={{ color: '#ef4444' }}>*</span>
+                  3. What problem do you see? • என்ன பிரச்சனை தெரிகிறது? <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px' }}>
                   {PROBLEM_TYPES.map((item) => {
@@ -636,7 +636,7 @@ export const FarmerReportProblemModal: React.FC<FarmerReportProblemModalProps> =
               {/* 4. UPLOAD OR CAPTURE CROP PHOTO */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.92rem', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
-                  4. Upload or Capture Crop Photo <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 400 }}>(Recommended)</span>
+                  4. Upload or Capture Crop Photo • பயிர் புகைப்படம் <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 400 }}>(Optional / விருப்பப்பட்டால்)</span>
                 </label>
 
                 {imagePreview ? (
@@ -678,7 +678,7 @@ export const FarmerReportProblemModal: React.FC<FarmerReportProblemModalProps> =
                         gap: '4px',
                       }}
                     >
-                      <X size={14} /> Remove Photo
+                      <X size={14} /> Remove Photo / நீக்குக
                     </button>
                   </div>
                 ) : (
@@ -712,7 +712,7 @@ export const FarmerReportProblemModal: React.FC<FarmerReportProblemModalProps> =
                       <Camera size={24} />
                     </div>
                     <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#e2e8f0' }}>
-                      Take photo or choose image from gallery
+                      Take photo or choose from gallery • கேமரா மூலம் படம் எடுக்கவும்
                     </span>
                     <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
                       PNG, JPG up to 10MB
@@ -731,25 +731,25 @@ export const FarmerReportProblemModal: React.FC<FarmerReportProblemModalProps> =
               {/* 5. DESCRIBE THE PROBLEM IN SIMPLE LANGUAGE */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.92rem', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
-                  5. Describe the problem in simple language
+                  5. Describe in your own words • உங்கள் சொந்த வார்த்தைகளில் விவரம்
                 </label>
                 <textarea
                   className="input-field"
                   rows={3}
-                  placeholder="e.g. Leaves have been turning yellow for the past 3 days after rain. The bottom leaves are drying out first..."
+                  placeholder="e.g. மழை பெய்த பிறகு இலைகள் மஞ்சள் நிறமாக மாறுகின்றன, அடி இலைகள் காய்ந்து விழுகின்றன..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   style={{ width: '100%', resize: 'vertical', fontSize: '0.88rem' }}
                 />
-                <span style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                  You don't need any scientific terms. Just describe what you see with your eyes.
+                <span style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '4px', display: 'block' }}>
+                  கடினமான ஆங்கில வார்த்தைகள் தேவையில்லை. நீங்கள் பார்ப்பதை எளிய தமிழில் அல்லது ஆங்கிலத்தில் எழுதலாம்.
                 </span>
               </div>
 
               {/* 6. SELECT AFFECTED AREA */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.92rem', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
-                  6. Select affected area <span style={{ color: '#ef4444' }}>*</span>
+                  6. How much of the field is affected? • பாதிப்பின் அளவு <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px' }}>
                   {AFFECTED_AREAS.map((area) => {
@@ -800,7 +800,7 @@ export const FarmerReportProblemModal: React.FC<FarmerReportProblemModalProps> =
                   className="btn btn-secondary"
                   style={{ padding: '10px 20px', fontSize: '0.9rem' }}
                 >
-                  Cancel
+                  Cancel / ரத்து செய்க
                 </button>
                 <button
                   type="submit"
@@ -824,7 +824,7 @@ export const FarmerReportProblemModal: React.FC<FarmerReportProblemModalProps> =
                     </>
                   ) : (
                     <>
-                      <Sprout size={18} /> Submit Report
+                      <Sprout size={18} /> Submit Problem Report / பிரச்சனையை அனுப்பவும்
                     </>
                   )}
                 </button>

@@ -4,6 +4,7 @@ import { api } from '../../api/client';
 import { Farmer, Farm, FarmerAdvisory, BiotechRecommendation, DiseaseCase } from '../../types';
 import { FarmerReportProblemModal } from './FarmerReportProblemModal';
 import { PriorityBadge } from '../common/Badge';
+import { TermHelper } from '../common/TermHelper';
 import {
   Tractor,
   Layers,
@@ -202,13 +203,17 @@ export const FarmerPortalView: React.FC = () => {
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontWeight: 700, fontSize: '0.8rem', textTransform: 'uppercase' }}>
-              <Tractor size={18} /> Farmer Advisory & Cultivation Portal
+              <Tractor size={18} /> Farmer Advisory & Cultivation Portal • விவசாயி ஆலோசனை மையம்
             </div>
             <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', marginTop: '6px' }}>
-              Welcome, {farmer?.fullName || user?.name}!
+              Welcome / வணக்கம், {farmer?.fullName || user?.name}!
             </h1>
             <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', maxWidth: '650px', lineHeight: 1.45, marginTop: '4px' }}>
               Welcome to your simple farm care desk. You can monitor your registered plots, report crop problems to your agronomist in 1 minute, and receive expert biological solutions.
+              <br />
+              <span style={{ color: '#6ee7b7', fontSize: '0.82rem', fontWeight: 500 }}>
+                உங்கள் நிலங்களை கண்காணிக்கவும், பயிர் பிரச்சனைகளை உடனே தெரிவிக்கவும், இயற்கை உரம் மற்றும் பூச்சி விரட்டி ஆலோசனைகளை பெறவும் இந்த பக்கம் உதவும்.
+              </span>
             </p>
           </div>
 
@@ -229,7 +234,7 @@ export const FarmerPortalView: React.FC = () => {
                 borderRadius: '10px',
               }}
             >
-              <Sprout size={18} /> Report Crop Problem
+              <Sprout size={18} /> Report Crop Problem / பயிர் பாதிப்பை தெரிவிக்க
             </button>
             <button onClick={loadFarmerData} className="btn btn-secondary" title="Refresh portal data">
               <RefreshCw size={16} />
@@ -482,8 +487,8 @@ export const FarmerPortalView: React.FC = () => {
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '4px' }}>
                     <div>🌱 Current Crop: <strong style={{ color: '#fff' }}>{plot.currentCrop || 'Cotton'}</strong></div>
-                    <div>💧 Irrigation: <strong style={{ color: '#fff' }}>{plot.irrigationType}</strong></div>
-                    <div>🌍 Soil Type: <strong style={{ color: '#fff' }}>{plot.soilType}</strong></div>
+                    <div>💧 Irrigation: <strong style={{ color: '#fff' }}>{plot.irrigationType}</strong> <span style={{ fontSize: '0.7rem', color: '#67e8f9' }}>({plot.irrigationType?.toLowerCase().includes('drip') ? 'சொட்டு நீர்' : 'பாசனம்'})</span></div>
+                    <div>🌍 Soil: <strong style={{ color: '#fff' }}>{plot.soilType}</strong> <span style={{ fontSize: '0.7rem', color: '#6ee7b7' }}>({plot.soilType?.toLowerCase().includes('clay') ? 'களிமண்' : plot.soilType?.toLowerCase().includes('sand') ? 'மணல் மண்' : 'மண் வகை'})</span></div>
                     <div>📍 GPS: <strong style={{ color: '#fff' }}>{plot.latitude?.toFixed(4)}, {plot.longitude?.toFixed(4)}</strong></div>
                   </div>
                 </div>
@@ -563,19 +568,19 @@ export const FarmerPortalView: React.FC = () => {
         </div>
       </div>
 
-      {/* Recommended Biotechnology Solutions for Farmer's Crops */}
+      {/* Recommended Bio-Crop Solutions & Natural Fertilizers for Farmer's Crops */}
       <div className="card-glass">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
           <div>
             <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Dna size={18} color="#8b5cf6" /> Biotechnology Prescriptions for Your Crops
+              <Dna size={18} color="#8b5cf6" /> Natural Bio-Fertilizers & Crop Protectors • இயற்கை உயிர் உரம் & பயிர் பாதுகாப்பு
             </h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Scientific biofertilizer inoculants, biocontrol parasitoids, and pathogen defenses.
+              Eco-friendly living bacteria, bio-pesticides, and disease defense solutions recommended for your soil and crops.
             </p>
           </div>
           <button onClick={() => navigate('/recommendations')} className="btn btn-secondary btn-sm">
-            Explore All Solutions
+            Explore All Solutions / அனைத்து தீர்வுகள்
           </button>
         </div>
 
@@ -595,15 +600,10 @@ export const FarmerPortalView: React.FC = () => {
             >
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <span style={{
-                    fontSize: '0.68rem',
-                    fontWeight: 700,
-                    color: '#8b5cf6',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                  }}>
-                    {rec.recommendationType}
-                  </span>
+                  <TermHelper
+                    termKey={rec.recommendationType}
+                    inlineLabel={rec.recommendationType.replace('_', ' ')}
+                  />
                   <span style={{
                     fontSize: '0.68rem',
                     background: rec.isAutomatedSuggestion ? 'rgba(6, 182, 212, 0.15)' : 'rgba(139, 92, 246, 0.15)',
@@ -612,7 +612,7 @@ export const FarmerPortalView: React.FC = () => {
                     borderRadius: '4px',
                     fontWeight: 600,
                   }}>
-                    {rec.isAutomatedSuggestion ? '🤖 AI Assisted' : '🧬 Expert Prescribed'}
+                    {rec.isAutomatedSuggestion ? '🤖 AI Recommended' : '🧬 Expert Prescribed'}
                   </span>
                 </div>
 

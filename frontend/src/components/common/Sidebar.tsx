@@ -27,10 +27,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = true }) => {
   const getNavItems = () => {
     if (rawRole === 'farmer') {
       return [
-        { to: '/dashboard/farmer', label: 'Farmer Portal', icon: LayoutDashboard, badge: 'My Farm' },
-        { to: '/diseases', label: 'Disease Outbreak Radar', icon: ShieldAlert, badge: 'Live GIS' },
-        { to: '/recommendations', label: 'Biotech Solutions', icon: Dna, badge: 'Solutions' },
-        { to: '/advisories', label: 'Farmer Advisories', icon: MessageSquareShare, badge: 'Direct' },
+        { to: '/dashboard/farmer', label: 'Farmer Portal (விவசாயி மையம்)', icon: LayoutDashboard, badge: 'My Farm' },
+        { to: '/diseases', label: 'Disease Radar (பயிர் நோய் தகவல்)', icon: ShieldAlert, badge: 'Live GIS' },
+        { to: '/recommendations', label: 'Bio Solutions (இயற்கை தீர்வு)', icon: Dna, badge: 'Solutions' },
+        { to: '/advisories', label: 'Advisories (ஆலோசனைகள்)', icon: MessageSquareShare, badge: 'Direct' },
       ];
     }
 

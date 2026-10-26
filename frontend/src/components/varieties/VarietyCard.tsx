@@ -1,6 +1,7 @@
 import React from 'react';
 import { CropVariety } from '../../types';
 import { BiotechTraitBadge } from '../common/Badge';
+import { TermHelper } from '../common/TermHelper';
 import { Sprout, Clock, ShieldCheck, MapPin, Sparkles, TrendingUp, Edit3, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -101,7 +102,7 @@ export const VarietyCard: React.FC<VarietyCardProps> = ({
         }}>
           <div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <TrendingUp size={12} color="#10b981" /> Expected Yield
+              <TrendingUp size={12} color="#10b981" /> Expected Yield • மகசூல்
             </div>
             <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#34d399', marginTop: '2px' }}>
               {variety.expectedYieldMin} - {variety.expectedYieldMax} <span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-muted)' }}>{variety.yieldUnit.split('/')[0]}</span>
@@ -110,10 +111,10 @@ export const VarietyCard: React.FC<VarietyCardProps> = ({
 
           <div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Clock size={12} color="#06b6d4" /> Maturity Cycle
+              <Clock size={12} color="#06b6d4" /> Maturity • அறுவடை காலம்
             </div>
             <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#38bdf8', marginTop: '2px' }}>
-              {variety.maturityDays} <span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-muted)' }}>Days</span>
+              {variety.maturityDays} <span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-muted)' }}>Days / நாட்கள்</span>
             </div>
           </div>
         </div>
@@ -121,7 +122,7 @@ export const VarietyCard: React.FC<VarietyCardProps> = ({
         {/* Biotech & Disease Traits */}
         <div style={{ marginBottom: '14px' }}>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '6px' }}>
-            Biotechnology Traits:
+            Biotechnology Traits • சிறப்பு குணங்கள்:
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
             {biotechTraitsList.map((t, idx) => (
@@ -140,7 +141,7 @@ export const VarietyCard: React.FC<VarietyCardProps> = ({
             marginBottom: '10px'
           }}>
             <ShieldCheck size={14} color="#10b981" style={{ flexShrink: 0, marginTop: '2px' }} />
-            <span><strong>Resistances:</strong> {variety.diseaseResistanceTraits}</span>
+            <span><strong>Resistances • நோய் எதிர்ப்பு:</strong> {variety.diseaseResistanceTraits}</span>
           </div>
         )}
       </div>
