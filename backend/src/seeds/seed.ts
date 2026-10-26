@@ -44,7 +44,7 @@ async function seed() {
   const adminHash = await bcrypt.hash('Admin@123', salt);
   const agroHash = await bcrypt.hash('Agronomist@123', salt);
   const scientistHash = await bcrypt.hash('Scientist@123', salt);
-  const farmerHash = await bcrypt.hash('Farmer@123', salt);
+  const farmerHash = await bcrypt.hash('Ramesh@123', salt);
 
   // 1. Admin Director
   const admin = await User.create({

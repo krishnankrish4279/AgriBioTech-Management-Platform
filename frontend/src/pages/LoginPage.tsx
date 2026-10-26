@@ -1,35 +1,16 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Dna, Lock, AlertCircle, CheckCircle2, ShieldCheck, UserPlus, LogIn, Eye, EyeOff, KeyRound, Sprout, ArrowLeft, Check, X } from 'lucide-react';
+import { Dna, Lock, AlertCircle, CheckCircle2, ShieldCheck, UserPlus, LogIn, Eye, EyeOff } from 'lucide-react';
 import { api } from '../api/client';
 
 export const LoginPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'LOGIN' | 'RESET_PASSWORD' | 'REGISTER_FARMER' | 'REGISTER_ADMIN'>('LOGIN');
+  const [activeTab, setActiveTab] = useState<'LOGIN' | 'REGISTER_ADMIN'>('LOGIN');
 
   // Login Form States
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-
-  // Password Recovery States
-  const [resetEmail, setResetEmail] = useState('');
-  const [resetToken, setResetToken] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [resetStep, setResetStep] = useState<1 | 2>(1);
-
-  // Farmer Registration States
-  const [farmerName, setFarmerName] = useState('');
-  const [farmerEmail, setFarmerEmail] = useState('');
-  const [farmerPhone, setFarmerPhone] = useState('');
-  const [farmerState, setFarmerState] = useState('Tamil Nadu');
-  const [farmerDistrict, setFarmerDistrict] = useState('Kanchipuram');
-  const [farmerCrops, setFarmerCrops] = useState('Rice, Chilli');
-  const [farmerPassword, setFarmerPassword] = useState('');
-  const [farmerConfirmPassword, setFarmerConfirmPassword] = useState('');
-  const [showFarmerPassword, setShowFarmerPassword] = useState(false);
 
   // Register Admin Form States
   const [regName, setRegName] = useState('');
@@ -44,7 +25,7 @@ export const LoginPage: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const { user, login, logout, demoSessionLogin } = useAuth();
+  const { user, login, logout } = useAuth();
   const navigate = useNavigate();
 
   React.useEffect(() => {
@@ -63,34 +44,7 @@ export const LoginPage: React.FC = () => {
     return '/dashboard/farmer';
   };
 
-  // Password strength checklist helper
-  const getPasswordCriteria = (pwd: string) => ({
-    length: pwd.length >= 8,
-    lowercase: /[a-z]/.test(pwd),
-    uppercase: /[A-Z]/.test(pwd),
-    number: /[0-9]/.test(pwd),
-    special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd),
-    notBreached: !['farmer@123', 'admin@123', 'agronomist@123', 'scientist@123', 'password', 'password123', '12345678'].includes(pwd.toLowerCase().trim()),
-  });
-
-  // Handle Quick Demo Sandbox Sign-In (avoids typing exposed dictionary passwords into browser password manager)
-  const handleQuickDemoLogin = async (role: string) => {
-    if (submitting) return;
-    setSubmitting(true);
-    setError('');
-    setSuccessMsg('');
-
-    try {
-      const authenticatedUser = await demoSessionLogin(role);
-      const targetDashboard = getDashboardRouteForRole(authenticatedUser.role);
-      navigate(targetDashboard, { replace: true });
-    } catch (err: any) {
-      setError(err.message || 'Demo session creation failed.');
-      setSubmitting(false);
-    }
-  };
-
-  // Handle Standard Sign-in
+  // Handle Standard Sign-in with explicit email and password
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitting) return;
@@ -105,148 +59,12 @@ export const LoginPage: React.FC = () => {
     setSuccessMsg('');
 
     try {
+      // Validate credentials through Express backend and MongoDB
       const authenticatedUser = await login(email.trim(), password);
       const targetDashboard = getDashboardRouteForRole(authenticatedUser.role);
       navigate(targetDashboard, { replace: true });
     } catch (err: any) {
       setError(err.message || 'Authentication failed. Please verify your email and password.');
-      setSubmitting(false);
-    }
-  };
-
-  // Step 1: Request Password Reset Code
-  const handleRequestResetToken = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (submitting) return;
-
-    if (!resetEmail.trim()) {
-      setError('Please enter your registered email address.');
-      return;
-    }
-
-    setSubmitting(true);
-    setError('');
-    setSuccessMsg('');
-
-    try {
-      const res = await api.auth.forgotPassword({ email: resetEmail.trim() });
-      if (res.resetToken) {
-        setResetToken(res.resetToken);
-        setResetStep(2);
-        setSuccessMsg('Recovery code generated! Please enter your new unique password below.');
-      } else {
-        setSuccessMsg(res.message);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to initiate password recovery.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Step 2: Complete Password Reset with New Unique Password
-  const handleCompletePasswordReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (submitting) return;
-
-    if (!resetToken.trim()) {
-      setError('Please provide the recovery verification token.');
-      return;
-    }
-
-    const criteria = getPasswordCriteria(newPassword);
-    if (!criteria.length || !criteria.lowercase || !criteria.uppercase || !criteria.number || !criteria.special) {
-      setError('Please choose a password meeting all complexity criteria (min 8 chars, uppercase, lowercase, number, symbol).');
-      return;
-    }
-
-    if (!criteria.notBreached) {
-      setError('This password is a common default found in public data breach databases. Please create a unique password.');
-      return;
-    }
-
-    if (newPassword !== confirmNewPassword) {
-      setError('Passwords do not match. Please re-enter identical passwords.');
-      return;
-    }
-
-    setSubmitting(true);
-    setError('');
-
-    try {
-      const res = await api.auth.resetPassword({
-        token: resetToken.trim(),
-        newPassword: newPassword.trim(),
-      });
-
-      setSuccessMsg(res.message || 'Password successfully updated! You can now sign in with your new unique credentials.');
-      // Auto-fill login email
-      if (resetEmail.trim()) {
-        setEmail(resetEmail.trim());
-      }
-      setPassword(newPassword.trim());
-      setTimeout(() => {
-        setActiveTab('LOGIN');
-        setResetStep(1);
-        setResetToken('');
-        setNewPassword('');
-        setConfirmNewPassword('');
-      }, 1500);
-    } catch (err: any) {
-      setError(err.message || 'Failed to reset password. The recovery code may have expired.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Handle Real Farmer Self-Registration
-  const handleFarmerRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (submitting) return;
-
-    if (!farmerName.trim() || !farmerEmail.trim() || !farmerPassword) {
-      setError('Full name, email address, and unique password are required.');
-      return;
-    }
-
-    const criteria = getPasswordCriteria(farmerPassword);
-    if (!criteria.length || !criteria.lowercase || !criteria.uppercase || !criteria.number || !criteria.special) {
-      setError('Password must be at least 8 characters and include uppercase, lowercase, numbers, and symbols.');
-      return;
-    }
-
-    if (!criteria.notBreached) {
-      setError('This password is a common default pattern found in public data breaches. Please choose a unique password.');
-      return;
-    }
-
-    if (farmerPassword !== farmerConfirmPassword) {
-      setError('Passwords do not match. Please verify both password entries.');
-      return;
-    }
-
-    setSubmitting(true);
-    setError('');
-    setSuccessMsg('');
-
-    try {
-      const res = await api.auth.register({
-        name: farmerName.trim(),
-        email: farmerEmail.trim(),
-        password: farmerPassword.trim(),
-        phone: farmerPhone.trim() || undefined,
-        state: farmerState,
-        district: farmerDistrict,
-        primaryCrops: farmerCrops,
-      });
-
-      localStorage.setItem('agribio_token', res.token);
-      setSuccessMsg(`Welcome, ${res.user.name}! Your verified farmer account has been created.`);
-
-      await login(farmerEmail.trim(), farmerPassword.trim());
-      navigate('/dashboard/farmer', { replace: true });
-    } catch (err: any) {
-      setError(err.message || 'Registration failed. Please check your information and try again.');
       setSubmitting(false);
     }
   };
@@ -258,6 +76,7 @@ export const LoginPage: React.FC = () => {
     setError('');
     setSuccessMsg('');
 
+    // Frontend Validations
     if (!regName.trim()) {
       setError('Please enter your full name.');
       return;
@@ -265,13 +84,12 @@ export const LoginPage: React.FC = () => {
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(regEmail.trim())) {
-      setError('Please enter a valid email address format.');
+      setError('Please enter a valid email address format (e.g. admin@organization.com).');
       return;
     }
 
-    const criteria = getPasswordCriteria(regPassword);
-    if (!criteria.length || !criteria.lowercase || !criteria.uppercase || !criteria.number || !criteria.special) {
-      setError('Password must be at least 8 characters with uppercase, lowercase, numbers, and special characters.');
+    if (regPassword.length < 6) {
+      setError('Password must be at least 6 characters in length.');
       return;
     }
 
@@ -286,14 +104,16 @@ export const LoginPage: React.FC = () => {
       const res = await api.auth.registerAdmin({
         name: regName.trim(),
         email: regEmail.trim(),
-        password: regPassword.trim(),
+        password: regPassword,
         phone: regPhone.trim() || undefined,
       });
 
+      // Save token and navigate directly to dashboard
       localStorage.setItem('agribio_token', res.token);
-      setSuccessMsg(`Admin account for ${res.user.name} created successfully! Redirecting...`);
+      setSuccessMsg(`Admin account for ${res.user.name} created successfully! Redirecting to Dashboard...`);
 
-      await login(regEmail.trim(), regPassword.trim());
+      // Log in user state and navigate
+      await login(regEmail.trim(), regPassword);
       navigate('/dashboard/admin', { replace: true });
     } catch (err: any) {
       setError(err.message || 'Registration failed. Additional administrators must be created by an authorized administrator.');
@@ -310,7 +130,7 @@ export const LoginPage: React.FC = () => {
       padding: 'clamp(16px, 4vw, 24px)',
       background: 'radial-gradient(circle at 50% 10%, rgba(16, 185, 129, 0.15), transparent 70%), #0a0f1d',
     }}>
-      <div className="card-glass" style={{ maxWidth: '500px', width: '100%', padding: 'clamp(24px, 5vw, 36px)', borderRadius: 'var(--radius-lg)' }}>
+      <div className="card-glass" style={{ maxWidth: '480px', width: '100%', padding: 'clamp(24px, 5vw, 36px)', borderRadius: 'var(--radius-lg)' }}>
         {/* Brand Logo & Header */}
         <div style={{ textAlign: 'center', marginBottom: '22px' }}>
           <div style={{
@@ -369,7 +189,7 @@ export const LoginPage: React.FC = () => {
           </div>
         )}
 
-        {/* Navigation Tabs */}
+        {/* Navigation Tabs (Only Sign In and Create Admin) */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
@@ -408,7 +228,7 @@ export const LoginPage: React.FC = () => {
           <button
             type="button"
             onClick={() => {
-              setActiveTab('REGISTER_FARMER');
+              setActiveTab('REGISTER_ADMIN');
               setError('');
               setSuccessMsg('');
             }}
@@ -421,14 +241,14 @@ export const LoginPage: React.FC = () => {
               border: 'none',
               borderRadius: '8px',
               fontSize: '0.82rem',
-              fontWeight: activeTab === 'REGISTER_FARMER' ? 700 : 500,
-              background: activeTab === 'REGISTER_FARMER' ? 'rgba(34, 197, 94, 0.18)' : 'transparent',
-              color: activeTab === 'REGISTER_FARMER' ? '#4ade80' : 'var(--text-muted)',
+              fontWeight: activeTab === 'REGISTER_ADMIN' ? 700 : 500,
+              background: activeTab === 'REGISTER_ADMIN' ? 'rgba(6, 182, 212, 0.18)' : 'transparent',
+              color: activeTab === 'REGISTER_ADMIN' ? '#22d3ee' : 'var(--text-muted)',
               cursor: 'pointer',
               transition: 'all 0.2s',
             }}
           >
-            <Sprout size={15} /> Farmer Sign Up
+            <UserPlus size={15} /> Create Admin
           </button>
         </div>
 
@@ -473,6 +293,7 @@ export const LoginPage: React.FC = () => {
         {/* TAB 1: SIGN IN FORM */}
         {activeTab === 'LOGIN' && (
           <>
+            {/* Informational Platform Account Reference (Read-only, no shortcuts) */}
             <div style={{
               background: 'rgba(15, 23, 42, 0.65)',
               border: '1px solid var(--border-subtle)',
@@ -498,94 +319,8 @@ export const LoginPage: React.FC = () => {
                 <div style={{ color: 'var(--text-muted)' }}>🧬 Scientist: <span style={{ color: '#67e8f9' }}>scientist@agribiotech.demo</span></div>
                 <div style={{ color: 'var(--text-muted)' }}>🚜 Farmer: <span style={{ color: '#fde68a' }}>farmer@agribiotech.demo</span></div>
               </div>
-
-              {/* 1-Click Demo Sandbox Sign-In buttons */}
-              <div style={{
-                marginTop: '10px',
-                paddingTop: '10px',
-                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-              }}>
-                <div style={{ fontSize: '0.69rem', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>
-                  1-Click Demo Sign-In (Direct Sandbox Access):
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDemoLogin('farmer')}
-                    disabled={submitting}
-                    style={{
-                      background: 'rgba(234, 179, 8, 0.1)',
-                      border: '1px solid rgba(234, 179, 8, 0.25)',
-                      color: '#fde047',
-                      padding: '5px 8px',
-                      borderRadius: '6px',
-                      fontSize: '0.72rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    🚜 Sign in as Farmer
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDemoLogin('agronomist')}
-                    disabled={submitting}
-                    style={{
-                      background: 'rgba(16, 185, 129, 0.1)',
-                      border: '1px solid rgba(16, 185, 129, 0.25)',
-                      color: '#6ee7b7',
-                      padding: '5px 8px',
-                      borderRadius: '6px',
-                      fontSize: '0.72rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    🌾 Sign in as Agronomist
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDemoLogin('biotech_expert')}
-                    disabled={submitting}
-                    style={{
-                      background: 'rgba(6, 182, 212, 0.1)',
-                      border: '1px solid rgba(6, 182, 212, 0.25)',
-                      color: '#67e8f9',
-                      padding: '5px 8px',
-                      borderRadius: '6px',
-                      fontSize: '0.72rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    🧬 Sign in as Scientist
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDemoLogin('admin')}
-                    disabled={submitting}
-                    style={{
-                      background: 'rgba(168, 85, 247, 0.1)',
-                      border: '1px solid rgba(168, 85, 247, 0.25)',
-                      color: '#c4b5fd',
-                      padding: '5px 8px',
-                      borderRadius: '6px',
-                      fontSize: '0.72rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    👑 Sign in as Admin
-                  </button>
-                </div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: '8px', fontStyle: 'italic' }}>
+                Every user must enter their registered email address and password to authenticate.
               </div>
             </div>
 
@@ -607,30 +342,7 @@ export const LoginPage: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label className="form-label">Password</label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('RESET_PASSWORD');
-                      setResetEmail(email);
-                      setError('');
-                      setSuccessMsg('');
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#06b6d4',
-                      fontSize: '0.75rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      padding: 0,
-                      marginBottom: '4px',
-                    }}
-                  >
-                    Forgot password?
-                  </button>
-                </div>
+                <label className="form-label">Password</label>
                 <div style={{ position: 'relative' }}>
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -675,416 +387,23 @@ export const LoginPage: React.FC = () => {
                 {submitting ? 'Authenticating Credentials...' : 'Sign In to Portal'}
               </button>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center', marginTop: '16px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                <div>
-                  New farmer?{' '}
+              <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Need a dedicated administrator login?{' '}
                   <button
                     type="button"
-                    onClick={() => {
-                      setActiveTab('REGISTER_FARMER');
-                      setError('');
-                      setSuccessMsg('');
-                    }}
-                    style={{ background: 'none', border: 'none', color: '#10b981', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
-                  >
-                    Register unique farmer account
-                  </button>
-                </div>
-                <div>
-                  Need administrator setup?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('REGISTER_ADMIN');
-                      setError('');
-                      setSuccessMsg('');
-                    }}
-                    style={{ background: 'none', border: 'none', color: '#06b6d4', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+                    onClick={() => setActiveTab('REGISTER_ADMIN')}
+                    style={{ background: 'none', border: 'none', color: '#22d3ee', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
                   >
                     Create Admin Account
                   </button>
-                </div>
+                </span>
               </div>
             </form>
           </>
         )}
 
-        {/* TAB 2: PASSWORD RECOVERY / RESET */}
-        {activeTab === 'RESET_PASSWORD' && (
-          <div>
-            <div style={{
-              background: 'rgba(6, 182, 212, 0.08)',
-              border: '1px solid rgba(6, 182, 212, 0.25)',
-              borderRadius: 'var(--radius-md)',
-              padding: '12px',
-              marginBottom: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-            }}>
-              <KeyRound size={20} color="#22d3ee" style={{ flexShrink: 0 }} />
-              <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>
-                Account Recovery: If your password was flagged as compromised or you forgot it, enter your registered email to set a unique, secure password.
-              </div>
-            </div>
-
-            {resetStep === 1 ? (
-              <form onSubmit={handleRequestResetToken}>
-                <div className="form-group">
-                  <label className="form-label">Registered Account Email *</label>
-                  <input
-                    type="email"
-                    className="input-field"
-                    placeholder="e.g. farmer@agribiotech.demo"
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    disabled={submitting}
-                    required
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="btn btn-biotech"
-                  style={{ width: '100%', marginTop: '10px' }}
-                  disabled={submitting}
-                >
-                  {submitting ? 'Generating Recovery Code...' : 'Request Password Recovery'}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleCompletePasswordReset}>
-                <div className="form-group">
-                  <label className="form-label">Recovery Verification Token *</label>
-                  <input
-                    type="text"
-                    className="input-field"
-                    placeholder="Paste recovery code"
-                    value={resetToken}
-                    onChange={(e) => setResetToken(e.target.value)}
-                    disabled={submitting}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">New Unique Password *</label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type={showNewPassword ? 'text' : 'password'}
-                      className="input-field"
-                      style={{ paddingRight: '40px' }}
-                      placeholder="Enter strong, unique password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      disabled={submitting}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                      style={{
-                        position: 'absolute',
-                        right: '10px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--text-muted)',
-                        cursor: 'pointer',
-                        padding: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                      }}
-                    >
-                      {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Confirm New Password *</label>
-                  <input
-                    type="password"
-                    className="input-field"
-                    placeholder="Re-enter new password"
-                    value={confirmNewPassword}
-                    onChange={(e) => setConfirmNewPassword(e.target.value)}
-                    disabled={submitting}
-                    required
-                  />
-                </div>
-
-                {/* Password Criteria Checklist */}
-                {newPassword && (
-                  <div style={{
-                    background: 'rgba(15, 23, 42, 0.7)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: '8px',
-                    padding: '10px 12px',
-                    marginBottom: '12px',
-                    fontSize: '0.73rem',
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '4px',
-                  }}>
-                    {(() => {
-                      const c = getPasswordCriteria(newPassword);
-                      return (
-                        <>
-                          <div style={{ color: c.length ? '#34d399' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {c.length ? <Check size={12} /> : <X size={12} />} 8+ Characters
-                          </div>
-                          <div style={{ color: c.uppercase ? '#34d399' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {c.uppercase ? <Check size={12} /> : <X size={12} />} Uppercase (A-Z)
-                          </div>
-                          <div style={{ color: c.lowercase ? '#34d399' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {c.lowercase ? <Check size={12} /> : <X size={12} />} Lowercase (a-z)
-                          </div>
-                          <div style={{ color: c.number ? '#34d399' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {c.number ? <Check size={12} /> : <X size={12} />} Number (0-9)
-                          </div>
-                          <div style={{ color: c.special ? '#34d399' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {c.special ? <Check size={12} /> : <X size={12} />} Symbol (!@#$)
-                          </div>
-                          <div style={{ color: c.notBreached ? '#34d399' : '#f87171', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {c.notBreached ? <Check size={12} /> : <X size={12} />} Not in Breaches
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  style={{ width: '100%', marginTop: '8px' }}
-                  disabled={submitting}
-                >
-                  {submitting ? 'Updating Password...' : '🔐 Set New Secure Password'}
-                </button>
-              </form>
-            )}
-
-            <div style={{ textAlign: 'center', marginTop: '14px' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('LOGIN');
-                  setError('');
-                  setSuccessMsg('');
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#94a3b8',
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                <ArrowLeft size={14} /> Return to Sign In
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 3: REGISTER REAL FARMER ACCOUNT */}
-        {activeTab === 'REGISTER_FARMER' && (
-          <form onSubmit={handleFarmerRegisterSubmit}>
-            <div style={{
-              background: 'rgba(16, 185, 129, 0.08)',
-              border: '1px solid rgba(16, 185, 129, 0.25)',
-              borderRadius: 'var(--radius-md)',
-              padding: '12px',
-              marginBottom: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-            }}>
-              <Sprout size={20} color="#10b981" style={{ flexShrink: 0 }} />
-              <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>
-                Farmer Registration: Create your own independent farmer account with a unique, secure password.
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Farmer Full Name *</label>
-              <input
-                type="text"
-                className="input-field"
-                placeholder="e.g. Ramesh Kumar"
-                value={farmerName}
-                onChange={(e) => setFarmerName(e.target.value)}
-                disabled={submitting}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Email Address *</label>
-              <input
-                type="email"
-                className="input-field"
-                placeholder="e.g. ramesh.kumar@agrofarm.in"
-                value={farmerEmail}
-                onChange={(e) => setFarmerEmail(e.target.value)}
-                disabled={submitting}
-                required
-              />
-            </div>
-
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">Phone Number</label>
-                <input
-                  type="tel"
-                  className="input-field"
-                  placeholder="+91-98765-43210"
-                  value={farmerPhone}
-                  onChange={(e) => setFarmerPhone(e.target.value)}
-                  disabled={submitting}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Primary Crops</label>
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder="e.g. Rice, Chilli, Maize"
-                  value={farmerCrops}
-                  onChange={(e) => setFarmerCrops(e.target.value)}
-                  disabled={submitting}
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Create Unique Password *</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showFarmerPassword ? 'text' : 'password'}
-                  className="input-field"
-                  style={{ paddingRight: '40px' }}
-                  placeholder="Min 8 characters (uppercase, lowercase, number, symbol)"
-                  value={farmerPassword}
-                  onChange={(e) => setFarmerPassword(e.target.value)}
-                  disabled={submitting}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowFarmerPassword(!showFarmerPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '10px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--text-muted)',
-                    cursor: 'pointer',
-                    padding: '4px',
-                  }}
-                >
-                  {showFarmerPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Confirm Password *</label>
-              <input
-                type="password"
-                className="input-field"
-                placeholder="Re-enter password"
-                value={farmerConfirmPassword}
-                onChange={(e) => setFarmerConfirmPassword(e.target.value)}
-                disabled={submitting}
-                required
-              />
-            </div>
-
-            {/* Password Criteria Checklist */}
-            {farmerPassword && (
-              <div style={{
-                background: 'rgba(15, 23, 42, 0.7)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '8px',
-                padding: '10px 12px',
-                marginBottom: '12px',
-                fontSize: '0.73rem',
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '4px',
-              }}>
-                {(() => {
-                  const c = getPasswordCriteria(farmerPassword);
-                  return (
-                    <>
-                      <div style={{ color: c.length ? '#34d399' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {c.length ? <Check size={12} /> : <X size={12} />} 8+ Characters
-                      </div>
-                      <div style={{ color: c.uppercase ? '#34d399' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {c.uppercase ? <Check size={12} /> : <X size={12} />} Uppercase (A-Z)
-                      </div>
-                      <div style={{ color: c.lowercase ? '#34d399' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {c.lowercase ? <Check size={12} /> : <X size={12} />} Lowercase (a-z)
-                      </div>
-                      <div style={{ color: c.number ? '#34d399' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {c.number ? <Check size={12} /> : <X size={12} />} Number (0-9)
-                      </div>
-                      <div style={{ color: c.special ? '#34d399' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {c.special ? <Check size={12} /> : <X size={12} />} Symbol (!@#$)
-                      </div>
-                      <div style={{ color: c.notBreached ? '#34d399' : '#f87171', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {c.notBreached ? <Check size={12} /> : <X size={12} />} Not in Breaches
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="btn btn-primary"
-              style={{ width: '100%', marginTop: '8px' }}
-              disabled={submitting}
-            >
-              {submitting ? 'Creating Farmer Account...' : '🌱 Register & Launch Farmer Portal'}
-            </button>
-
-            <div style={{ textAlign: 'center', marginTop: '14px' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('LOGIN');
-                  setError('');
-                  setSuccessMsg('');
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#94a3b8',
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                <ArrowLeft size={14} /> Already registered? Return to Sign In
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* TAB 4: CREATE ADMIN ACCOUNT FORM */}
+        {/* TAB 2: CREATE ADMIN ACCOUNT FORM */}
         {activeTab === 'REGISTER_ADMIN' && (
           <form onSubmit={handleRegisterAdminSubmit}>
             <div style={{
@@ -1105,42 +424,69 @@ export const LoginPage: React.FC = () => {
 
             <div className="form-group">
               <label className="form-label">Full Name *</label>
-              <input
-                type="text"
-                className="input-field"
-                placeholder="e.g. Dr. Vikram Seth"
-                value={regName}
-                onChange={(e) => setRegName(e.target.value)}
-                disabled={submitting}
-                required
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="e.g. Dr. Vikram Seth"
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                  disabled={submitting}
+                  required
+                />
+              </div>
             </div>
 
             <div className="form-group">
               <label className="form-label">Administrator Email *</label>
-              <input
-                type="email"
-                className="input-field"
-                placeholder="e.g. vikram.admin@agribiotech.com"
-                value={regEmail}
-                onChange={(e) => setRegEmail(e.target.value)}
-                disabled={submitting}
-                required
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="email"
+                  className="input-field"
+                  placeholder="e.g. vikram.admin@agribiotech.com"
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  disabled={submitting}
+                  required
+                />
+              </div>
             </div>
 
             <div className="grid-2">
               <div className="form-group">
                 <label className="form-label">Password *</label>
-                <input
-                  type="password"
-                  className="input-field"
-                  placeholder="Min 8 characters"
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  disabled={submitting}
-                  required
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showRegPassword ? 'text' : 'password'}
+                    className="input-field"
+                    style={{ paddingRight: '40px' }}
+                    placeholder="Min 6 characters"
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    disabled={submitting}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '10px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                    title={showRegPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showRegPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
 
               <div className="form-group">
@@ -1183,11 +529,7 @@ export const LoginPage: React.FC = () => {
                 Already have an account?{' '}
                 <button
                   type="button"
-                  onClick={() => {
-                    setActiveTab('LOGIN');
-                    setError('');
-                    setSuccessMsg('');
-                  }}
+                  onClick={() => setActiveTab('LOGIN')}
                   style={{ background: 'none', border: 'none', color: '#10b981', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
                 >
                   Return to Sign In
