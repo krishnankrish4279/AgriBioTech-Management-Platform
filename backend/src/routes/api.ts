@@ -75,7 +75,7 @@ router.get('/recommendations', optionalAuth, recommendationController.getRecomme
 router.get('/recommendations/:id', optionalAuth, recommendationController.getRecommendationById);
 router.post('/recommendations', authenticate, requireRole(['admin', 'biotech_expert']), recommendationController.createRecommendation);
 router.post('/recommendations/generate-ai', authenticate, requireRole(['admin', 'biotech_expert']), recommendationController.generateAIRecommendations);
-router.put('/recommendations/:id', authenticate, requireRole(['admin', 'biotech_expert']), recommendationController.updateRecommendation);
+router.put('/recommendations/:id', authenticate, requireRole(['admin', 'biotech_expert', 'agronomist', 'farmer']), recommendationController.updateRecommendation);
 router.delete('/recommendations/:id', authenticate, requireRole(['admin', 'biotech_expert']), recommendationController.deleteRecommendation);
 
 // Field Observations (CRUD)

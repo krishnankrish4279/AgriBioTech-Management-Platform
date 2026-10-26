@@ -50,6 +50,14 @@ async function runTests() {
   }
 
   try {
+    // 0. Login as scientist to get token
+    const loginRes = await request('/auth/login', {
+      method: 'POST',
+      body: { email: 'scientist@agribiotech.demo', password: 'Scientist@123' },
+    });
+    const token = loginRes.data?.token;
+    assert(token && token.length > 20, 'Logged in as Biotech Scientist to obtain JWT token');
+
     // 1. Fetch all recommendations
     const allRes = await request('/recommendations');
     assert(allRes.status === 200 && Array.isArray(allRes.data), 'GET /api/recommendations returns 200 with array');
@@ -69,7 +77,6 @@ async function runTests() {
     // 3. Test that unverified claims are sanitized or qualified
     const unverifiedClaimsCleaned = allRes.data.every(r => {
       const benefit = r.expectedBenefit || '';
-      // If it mentions percentages or hours, it must have an estimate qualifier
       const hasNumerical = /([0-9]+%|[0-9]+-[0-9]+%|[0-9]+\s*(?:hours|hrs|days|weeks))/i.test(benefit);
       if (!hasNumerical) return true;
       return /(estimate|unverified|varies)/i.test(benefit);
@@ -94,11 +101,12 @@ async function runTests() {
     const anaimalaiNoWheat = anaimalaiRes.data.every(r => r.cropName?.toLowerCase() !== 'wheat');
     assert(anaimalaiNoWheat, 'Anaimalai Maize farm view strictly excludes Wheat recommendations');
 
-    // 6. Test Mark Applied status update
+    // 6. Test Mark Applied status update with token
     if (allRes.data.length > 0) {
       const targetRec = allRes.data[0];
       const updateRes = await request(`/recommendations/${targetRec.id}`, {
         method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
         body: { status: 'APPLIED' },
       });
       assert(updateRes.status === 200 && updateRes.data.status === 'APPLIED', 'PUT /api/recommendations/:id successfully marks as APPLIED');
