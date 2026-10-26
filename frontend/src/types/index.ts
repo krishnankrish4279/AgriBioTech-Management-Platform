@@ -191,6 +191,9 @@ export interface FieldObservation {
 
 export interface BiotechRecommendation {
   id: string;
+  farmId?: string;
+  farm?: { id: string; farmName: string; locationAddress?: string; currentCrop?: string };
+  cropName?: string;
   cropVarietyId?: string;
   cropVariety?: CropVariety;
   diseaseCaseId?: string;

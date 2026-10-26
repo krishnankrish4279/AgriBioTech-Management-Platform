@@ -229,7 +229,7 @@ export const api = {
 
   // Biotech Recommendations
   recommendations: {
-    getAll: (params?: { recommendationType?: string; status?: string; isAutomated?: string; search?: string }) =>
+    getAll: (params?: { recommendationType?: string; status?: string; isAutomated?: string; search?: string; farmId?: string; crop?: string }) =>
       request<BiotechRecommendation[]>(`/recommendations${buildQueryString(params)}`),
     getById: (id: string) => request<BiotechRecommendation>(`/recommendations/${id}`),
     create: (data: Partial<BiotechRecommendation>) =>

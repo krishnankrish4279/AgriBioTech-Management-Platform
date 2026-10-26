@@ -27,6 +27,8 @@ export const CreateRecommendationModal: React.FC<CreateRecommendationModalProps>
   const [dosage, setDosage] = useState('');
   const [applicationInstructions, setApplicationInstructions] = useState('');
   const [precautions, setPrecautions] = useState('');
+  const [farmId, setFarmId] = useState('');
+  const [cropName, setCropName] = useState('');
   const [cropVarietyId, setCropVarietyId] = useState('');
   const [farmerId, setFarmerId] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -39,6 +41,21 @@ export const CreateRecommendationModal: React.FC<CreateRecommendationModalProps>
     }
   }, [isOpen]);
 
+  const handleFarmSelect = (fId: string) => {
+    setFarmId(fId);
+    if (!fId) {
+      setFarmerId('');
+      setCropName('');
+      return;
+    }
+    const f = farms.find(farm => farm.id === fId);
+    if (f) {
+      if (f.farmerId) setFarmerId(f.farmerId);
+      if (f.cropVarietyId) setCropVarietyId(f.cropVarietyId);
+      if (f.currentCrop) setCropName(f.currentCrop);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !productName || !reasoning) {
@@ -49,8 +66,12 @@ export const CreateRecommendationModal: React.FC<CreateRecommendationModalProps>
     setSubmitting(true);
     setError('');
 
+    const resolvedCrop = cropName || (varieties.find(v => v.id === cropVarietyId)?.cropName) || undefined;
+
     try {
       await api.recommendations.create({
+        farmId: farmId || undefined,
+        cropName: resolvedCrop,
         title,
         productName,
         recommendationType: recommendationType as any,
@@ -145,6 +166,24 @@ export const CreateRecommendationModal: React.FC<CreateRecommendationModalProps>
           </div>
 
           <div className="form-group">
+            <label className="form-label">Target Farm (Optional)</label>
+            <select
+              className="select-field"
+              value={farmId}
+              onChange={(e) => handleFarmSelect(e.target.value)}
+            >
+              <option value="">Universal / General Multi-Farm</option>
+              {farms.map(f => (
+                <option key={f.id} value={f.id}>
+                  {f.farmName} ({f.currentCrop || 'General Crop'})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid-2">
+          <div className="form-group">
             <label className="form-label">Assign Target Crop Variety</label>
             <select
               className="select-field"
@@ -159,17 +198,17 @@ export const CreateRecommendationModal: React.FC<CreateRecommendationModalProps>
               ))}
             </select>
           </div>
-        </div>
 
-        <div className="form-group">
-          <label className="form-label">Target Agronomic Vector / Problem</label>
-          <input
-            type="text"
-            className="input-field"
-            placeholder="e.g. Yellow stripe rust outbreak in flowering wheat canopy"
-            value={targetIssue}
-            onChange={(e) => setTargetIssue(e.target.value)}
-          />
+          <div className="form-group">
+            <label className="form-label">Target Agronomic Vector / Problem</label>
+            <input
+              type="text"
+              className="input-field"
+              placeholder="e.g. Yellow stripe rust outbreak in flowering wheat canopy"
+              value={targetIssue}
+              onChange={(e) => setTargetIssue(e.target.value)}
+            />
+          </div>
         </div>
 
         <div className="form-group">

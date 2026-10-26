@@ -247,6 +247,8 @@ const FieldObservationSchema = new Schema<IFieldObservation>(
 
 // 7. BIOTECHNOLOGY RECOMMENDATION MODEL
 export interface IBiotechnologyRecommendation extends Document {
+  farmId?: mongoose.Types.ObjectId;
+  cropName?: string;
   cropVarietyId?: mongoose.Types.ObjectId;
   diseaseReportId?: mongoose.Types.ObjectId;
   fieldObservationId?: mongoose.Types.ObjectId;
@@ -269,6 +271,8 @@ export interface IBiotechnologyRecommendation extends Document {
 
 const BiotechnologyRecommendationSchema = new Schema<IBiotechnologyRecommendation>(
   {
+    farmId: { type: Schema.Types.ObjectId, ref: 'Farm', index: true },
+    cropName: { type: String, trim: true, index: true },
     cropVarietyId: { type: Schema.Types.ObjectId, ref: 'CropVariety', index: true },
     diseaseReportId: { type: Schema.Types.ObjectId, ref: 'DiseaseReport', index: true },
     fieldObservationId: { type: Schema.Types.ObjectId, ref: 'FieldObservation', index: true },

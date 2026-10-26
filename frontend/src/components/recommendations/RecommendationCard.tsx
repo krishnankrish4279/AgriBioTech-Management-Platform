@@ -114,6 +114,57 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
             )}
           </div>
 
+          {/* Farm and Crop Association Badges */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '6px',
+              marginBottom: '10px',
+            }}
+          >
+            <span
+              style={{
+                background: 'rgba(56, 189, 248, 0.12)',
+                color: '#38bdf8',
+                border: '1px solid rgba(56, 189, 248, 0.28)',
+                borderRadius: '6px',
+                padding: '2px 8px',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                maxWidth: '100%',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+              title={`Assigned Farm: ${rec.farm?.farmName || (rec.farmId ? 'Assigned Farm' : 'Universal / All Farms')}`}
+            >
+              🏡 {rec.farm?.farmName ? (rec.farm.farmName.length > 24 ? rec.farm.farmName.substring(0, 22) + '...' : rec.farm.farmName) : (rec.farmId ? 'Assigned Farm' : 'Universal Protocol')}
+            </span>
+
+            <span
+              style={{
+                background: 'rgba(34, 197, 94, 0.12)',
+                color: '#4ade80',
+                border: '1px solid rgba(34, 197, 94, 0.28)',
+                borderRadius: '6px',
+                padding: '2px 8px',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+              title={`Target Crop: ${rec.cropName || rec.cropVariety?.cropName || (rec.title?.toLowerCase().includes('maize') ? 'Maize' : rec.title?.toLowerCase().includes('wheat') ? 'Wheat' : 'Universal Crop')}`}
+            >
+              🌱 {rec.cropName || rec.cropVariety?.cropName || (rec.title?.toLowerCase().includes('maize') ? 'Maize' : rec.title?.toLowerCase().includes('wheat') ? 'Wheat' : 'Universal')}
+            </span>
+          </div>
+
           {/* 1. Recommendation title */}
           <h3
             style={{
@@ -183,12 +234,37 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
                 background: 'rgba(16, 185, 129, 0.04)',
                 border: '1px solid rgba(16, 185, 129, 0.14)',
                 borderRadius: '8px',
-                padding: '6px 10px',
+                padding: '8px 10px',
               }}
             >
-              <span style={{ color: '#34d399', fontSize: '0.74rem', fontWeight: 700, display: 'block' }}>
-                EXPECTED BENEFIT
-              </span>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '4px',
+                }}
+              >
+                <span style={{ color: '#34d399', fontSize: '0.74rem', fontWeight: 700 }}>
+                  EXPECTED BENEFIT
+                </span>
+                {Boolean(rec.expectedBenefit && /([0-9]+%|[0-9]+-[0-9]+%|[0-9]+\s*(?:hours|hrs|days|weeks)|unverified|estimate)/i.test(rec.expectedBenefit)) && (
+                  <span
+                    style={{
+                      background: 'rgba(245, 158, 11, 0.15)',
+                      color: '#fbbf24',
+                      border: '1px solid rgba(245, 158, 11, 0.35)',
+                      borderRadius: '4px',
+                      padding: '1px 6px',
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                    }}
+                    title="Field trial estimate; not independently scientifically proven for all plots."
+                  >
+                    Field Estimate (Unverified)
+                  </span>
+                )}
+              </div>
               <span style={{ color: '#d1fae5', fontWeight: 600, fontSize: '0.82rem' }}>
                 {rec.expectedBenefit}
               </span>

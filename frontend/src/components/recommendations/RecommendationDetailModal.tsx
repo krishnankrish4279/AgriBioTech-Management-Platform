@@ -101,7 +101,7 @@ export const RecommendationDetailModal: React.FC<RecommendationDetailModalProps>
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {/* Prescribed Formulation & Target Issue */}
+        {/* Prescribed Formulation, Farm, Crop & Target Issue */}
         <div
           style={{
             background: 'rgba(255, 255, 255, 0.03)',
@@ -110,10 +110,40 @@ export const RecommendationDetailModal: React.FC<RecommendationDetailModalProps>
             padding: '14px 16px',
           }}
         >
-          <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>
-            Prescribed Bio-Input Formulation
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>
+              Prescribed Bio-Input Formulation
+            </div>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              <span
+                style={{
+                  background: 'rgba(56, 189, 248, 0.12)',
+                  color: '#38bdf8',
+                  border: '1px solid rgba(56, 189, 248, 0.28)',
+                  borderRadius: '6px',
+                  padding: '2px 8px',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                }}
+              >
+                🏡 {rec.farm?.farmName || (rec.farmId ? 'Assigned Farm' : 'Universal / All Farms')}
+              </span>
+              <span
+                style={{
+                  background: 'rgba(34, 197, 94, 0.12)',
+                  color: '#4ade80',
+                  border: '1px solid rgba(34, 197, 94, 0.28)',
+                  borderRadius: '6px',
+                  padding: '2px 8px',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                }}
+              >
+                🌱 {rec.cropName || rec.cropVariety?.cropName || (rec.title?.toLowerCase().includes('maize') ? 'Maize' : rec.title?.toLowerCase().includes('wheat') ? 'Wheat' : 'Universal Crop')}
+              </span>
+            </div>
           </div>
-          <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#38bdf8', marginTop: '3px' }}>
+          <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#38bdf8', marginTop: '6px' }}>
             {rec.productName}
           </div>
           <div style={{ fontSize: '0.84rem', color: '#e2e8f0', marginTop: '8px' }}>
@@ -200,12 +230,34 @@ export const RecommendationDetailModal: React.FC<RecommendationDetailModalProps>
             padding: '12px 14px',
           }}
         >
-          <div style={{ fontSize: '0.72rem', color: '#22d3ee', fontWeight: 700, textTransform: 'uppercase' }}>
-            Expected Agronomic Benefit
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <div style={{ fontSize: '0.72rem', color: '#22d3ee', fontWeight: 700, textTransform: 'uppercase' }}>
+              Expected Agronomic Benefit
+            </div>
+            {Boolean(rec.expectedBenefit && /([0-9]+%|[0-9]+-[0-9]+%|[0-9]+\s*(?:hours|hrs|days|weeks)|unverified|estimate)/i.test(rec.expectedBenefit)) && (
+              <span
+                style={{
+                  background: 'rgba(245, 158, 11, 0.15)',
+                  color: '#fbbf24',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  borderRadius: '4px',
+                  padding: '2px 8px',
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                }}
+              >
+                Field Estimate (Unverified)
+              </span>
+            )}
           </div>
           <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#e0f2fe', marginTop: '4px' }}>
             🌱 {rec.expectedBenefit}
           </div>
+          {Boolean(rec.expectedBenefit && /([0-9]+%|[0-9]+-[0-9]+%|[0-9]+\s*(?:hours|hrs|days|weeks)|unverified|estimate)/i.test(rec.expectedBenefit)) && (
+            <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '6px', fontStyle: 'italic' }}>
+              * Numerical benefit projections and timelines are field trial estimates and vary with weather, disease severity, and soil microbial activity.
+            </div>
+          )}
         </div>
 
         {/* Precautions */}

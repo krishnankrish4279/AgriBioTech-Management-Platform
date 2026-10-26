@@ -1,11 +1,73 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { BiotechnologyRecommendation, CropVariety, Farmer, User, FarmerAdvisory, ActivityLog } from '../models';
+import { BiotechnologyRecommendation, CropVariety, Farmer, Farm, User, FarmerAdvisory, ActivityLog } from '../models';
 import { AuthenticatedRequest } from '../middleware/auth';
+
+function sanitizeExpectedBenefit(benefit?: string): string {
+  if (!benefit) {
+    return 'Promotes natural crop resilience and biological pest inhibition (Field estimate; unverified under open-field conditions).';
+  }
+
+  let cleaned = benefit;
+  // Replace unverified claims with scientifically honest wording
+  cleaned = cleaned.replace(/Halts disease spread within 48-72 hours without inducing chemical resistance\.?/gi,
+    'Antagonizes foliar fungal pathogens and suppresses spore germination (Field trial estimate; response timing varies with disease pressure).');
+  cleaned = cleaned.replace(/80-90% reduction in larval emergence without toxic chemical residues\.?/gi,
+    'Targeted egg parasitism reduces pest emergence without toxic chemical residues (Agronomic field estimate; unverified under open-canopy conditions).');
+  cleaned = cleaned.replace(/15-20% increase in vegetative root mass and 10% lower chemical fertilizer requirement\.?/gi,
+    'Promotes root colonization and nutrient uptake efficiency (Field trial estimate; unverified under variable open-field conditions).');
+
+  // If text contains percentage or numerical timeline claims without an unverified/estimate qualifier:
+  const hasPercentageOrTimeline = /([0-9]+%|[0-9]+-[0-9]+%|[0-9]+\s*(?:hours|hrs|days|weeks))/i.test(cleaned);
+  const alreadyQualified = /(field (?:trial )?estimate|agronomic estimate|unverified|varies)/i.test(cleaned);
+  if (hasPercentageOrTimeline && !alreadyQualified) {
+    cleaned = `${cleaned.trim()} (Field estimate; unverified across variable field conditions).`;
+  }
+  return cleaned;
+}
+
+function inferCropName(rec: any, farm?: any): string {
+  if (rec.cropName && rec.cropName.trim()) return rec.cropName.trim();
+  const variety: any = rec.cropVarietyId;
+  if (variety && variety.cropName) return variety.cropName;
+  if (farm && farm.currentCrop) return farm.currentCrop;
+
+  const combinedText = `${rec.title || ''} ${rec.targetIssue || ''} ${rec.reasoning || ''}`;
+  if (/maize/i.test(combinedText)) return 'Maize';
+  if (/wheat/i.test(combinedText)) return 'Wheat';
+  if (/rice|paddy/i.test(combinedText)) return 'Rice';
+  if (/chilli|chili/i.test(combinedText)) return 'Chilli';
+  if (/cotton/i.test(combinedText)) return 'Cotton';
+  if (/tomato/i.test(combinedText)) return 'Tomato';
+
+  return 'Universal';
+}
+
+function resolveFarmForRec(rec: any, allFarms: any[], cropName: string): any {
+  if (rec.farmId && typeof rec.farmId === 'object' && rec.farmId.farmName) {
+    return rec.farmId;
+  }
+  if (rec.farmId) {
+    const found = allFarms.find(f => f._id.toString() === rec.farmId.toString());
+    if (found) return found;
+  }
+  // Match by farmerId and cropName
+  const fId = rec.farmerId?._id?.toString() || rec.farmerId?.toString();
+  if (fId) {
+    const ownedFarms = allFarms.filter(f => f.farmerId && f.farmerId.toString() === fId);
+    if (ownedFarms.length === 1) return ownedFarms[0];
+    if (ownedFarms.length > 1) {
+      const cropMatch = ownedFarms.find(f => f.currentCrop && f.currentCrop.toLowerCase() === cropName.toLowerCase());
+      if (cropMatch) return cropMatch;
+      return ownedFarms[0];
+    }
+  }
+  return null;
+}
 
 export const getRecommendations = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { recommendationType, status, isAutomated, cropVarietyId, farmerId, search } = req.query;
+    const { recommendationType, status, isAutomated, cropVarietyId, farmerId, farmId, crop, search } = req.query;
 
     const filter: any = {};
 
@@ -35,22 +97,49 @@ export const getRecommendations = async (req: Request, res: Response): Promise<v
         { productName: { $regex: search.trim(), $options: 'i' } },
         { targetIssue: { $regex: search.trim(), $options: 'i' } },
         { reasoning: { $regex: search.trim(), $options: 'i' } },
+        { cropName: { $regex: search.trim(), $options: 'i' } },
       ];
     }
 
-    const recommendations = await BiotechnologyRecommendation.find(filter)
-      .populate('cropVarietyId')
-      .populate('farmerId')
-      .populate('creatorId', 'name role email')
-      .sort({ createdAt: -1 });
+    const [recommendations, allFarms] = await Promise.all([
+      BiotechnologyRecommendation.find(filter)
+        .populate('cropVarietyId')
+        .populate('farmerId')
+        .populate('farmId')
+        .populate('creatorId', 'name role email')
+        .sort({ createdAt: -1 }),
+      Farm.find().lean(),
+    ]);
 
-    const formatted = recommendations.map(r => {
+    let formatted = recommendations.map(r => {
       const variety: any = r.cropVarietyId;
       const farmer: any = r.farmerId;
       const creator: any = r.creatorId;
 
+      const rawFarm: any = r.farmId;
+      const cropName = inferCropName(r, rawFarm);
+      const farm = resolveFarmForRec(r, allFarms, cropName);
+      const sanitizedBenefit = sanitizeExpectedBenefit(r.expectedBenefit);
+
+      // Auto-heal missing cropName, farmId, and unverified claims in MongoDB
+      if (!r.cropName || !r.farmId || r.expectedBenefit !== sanitizedBenefit) {
+        BiotechnologyRecommendation.findByIdAndUpdate(r._id, {
+          ...(r.cropName ? {} : { cropName }),
+          ...(r.farmId || !farm ? {} : { farmId: farm._id }),
+          ...(r.expectedBenefit === sanitizedBenefit ? {} : { expectedBenefit: sanitizedBenefit }),
+        }).exec().catch(() => {});
+      }
+
       return {
         id: r._id.toString(),
+        farmId: farm ? farm._id.toString() : (rawFarm?._id?.toString() || undefined),
+        farm: farm ? {
+          id: farm._id.toString(),
+          farmName: farm.farmName,
+          locationAddress: farm.locationAddress,
+          currentCrop: farm.currentCrop,
+        } : undefined,
+        cropName,
         cropVarietyId: variety?._id?.toString(),
         cropVariety: variety ? {
           id: variety._id.toString(),
@@ -75,7 +164,7 @@ export const getRecommendations = async (req: Request, res: Response): Promise<v
         productName: r.productName,
         targetIssue: r.targetIssue,
         reasoning: r.reasoning,
-        expectedBenefit: r.expectedBenefit,
+        expectedBenefit: sanitizedBenefit,
         applicationInstructions: r.applicationInstructions,
         dosage: r.dosage,
         precautions: r.precautions,
@@ -85,6 +174,14 @@ export const getRecommendations = async (req: Request, res: Response): Promise<v
         updatedAt: r.updatedAt,
       };
     });
+
+    // Apply farm and crop filtering if requested
+    if (farmId && typeof farmId === 'string' && farmId !== 'ALL' && farmId !== 'undefined' && farmId !== '') {
+      formatted = formatted.filter(r => r.farmId === farmId);
+    }
+    if (crop && typeof crop === 'string' && crop !== 'ALL' && crop !== 'undefined' && crop !== '') {
+      formatted = formatted.filter(r => r.cropName?.toLowerCase() === crop.toLowerCase());
+    }
 
     res.json(formatted);
   } catch (error: any) {
@@ -96,10 +193,14 @@ export const getRecommendations = async (req: Request, res: Response): Promise<v
 export const getRecommendationById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const rec = await BiotechnologyRecommendation.findById(id)
-      .populate('cropVarietyId')
-      .populate('farmerId')
-      .populate('creatorId', 'name role email');
+    const [rec, allFarms] = await Promise.all([
+      BiotechnologyRecommendation.findById(id)
+        .populate('cropVarietyId')
+        .populate('farmerId')
+        .populate('farmId')
+        .populate('creatorId', 'name role email'),
+      Farm.find().lean(),
+    ]);
 
     if (!rec) {
       res.status(404).json({ error: 'Recommendation not found' });
@@ -109,9 +210,21 @@ export const getRecommendationById = async (req: Request, res: Response): Promis
     const variety: any = rec.cropVarietyId;
     const farmer: any = rec.farmerId;
     const creator: any = rec.creatorId;
+    const rawFarm: any = rec.farmId;
+
+    const cropName = inferCropName(rec, rawFarm);
+    const farm = resolveFarmForRec(rec, allFarms, cropName);
 
     res.json({
       id: rec._id.toString(),
+      farmId: farm ? farm._id.toString() : (rawFarm?._id?.toString() || undefined),
+      farm: farm ? {
+        id: farm._id.toString(),
+        farmName: farm.farmName,
+        locationAddress: farm.locationAddress,
+        currentCrop: farm.currentCrop,
+      } : undefined,
+      cropName,
       cropVariety: variety ? {
         id: variety._id.toString(),
         cropName: variety.cropName,
@@ -131,12 +244,14 @@ export const getRecommendationById = async (req: Request, res: Response): Promis
       productName: rec.productName,
       targetIssue: rec.targetIssue,
       reasoning: rec.reasoning,
-      expectedBenefit: rec.expectedBenefit,
+      expectedBenefit: sanitizeExpectedBenefit(rec.expectedBenefit),
       applicationInstructions: rec.applicationInstructions,
       dosage: rec.dosage,
       precautions: rec.precautions,
       isAutomatedSuggestion: rec.isAutomatedSuggestion,
       status: rec.status,
+      createdAt: rec.createdAt,
+      updatedAt: rec.updatedAt,
     });
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to fetch recommendation' });
@@ -146,6 +261,8 @@ export const getRecommendationById = async (req: Request, res: Response): Promis
 export const createRecommendation = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const {
+      farmId,
+      cropName,
       cropVarietyId,
       diseaseCaseId,
       fieldObservationId,
@@ -170,18 +287,34 @@ export const createRecommendation = async (req: AuthenticatedRequest, res: Respo
 
     const creatorId = req.user?.id || (await User.findOne({ role: { $in: ['biotech_expert', 'BIOTECH_EXPERT', 'admin', 'ADMIN'] } }))?._id;
 
+    let validFarmId = (farmId && mongoose.Types.ObjectId.isValid(farmId)) ? farmId : undefined;
+    let validFarmerId = (farmerId && mongoose.Types.ObjectId.isValid(farmerId)) ? farmerId : undefined;
+    let validVarietyId = (cropVarietyId && mongoose.Types.ObjectId.isValid(cropVarietyId)) ? cropVarietyId : undefined;
+    let effectiveCropName = cropName || 'Universal';
+
+    if (validFarmId && (!validFarmerId || !validVarietyId || effectiveCropName === 'Universal')) {
+      const farmDoc = await Farm.findById(validFarmId);
+      if (farmDoc) {
+        if (!validFarmerId && farmDoc.farmerId) validFarmerId = farmDoc.farmerId.toString();
+        if (!validVarietyId && farmDoc.cropVarietyId) validVarietyId = farmDoc.cropVarietyId.toString();
+        if (effectiveCropName === 'Universal' && farmDoc.currentCrop) effectiveCropName = farmDoc.currentCrop;
+      }
+    }
+
     const rec = await BiotechnologyRecommendation.create({
-      cropVarietyId: cropVarietyId || undefined,
+      farmId: validFarmId,
+      cropName: effectiveCropName,
+      cropVarietyId: validVarietyId,
       diseaseReportId: diseaseCaseId || undefined,
       fieldObservationId: fieldObservationId || undefined,
-      farmerId: farmerId || undefined,
+      farmerId: validFarmerId,
       creatorId,
       recommendationType,
       title,
       productName,
       targetIssue: targetIssue || 'Crop health enhancement',
       reasoning,
-      expectedBenefit: expectedBenefit || 'Boosts natural crop resilience and prevents pest/disease losses.',
+      expectedBenefit: sanitizeExpectedBenefit(expectedBenefit || 'Promotes natural crop resilience and biological pest inhibition (Field estimate; unverified under open-field conditions).'),
       applicationInstructions: applicationInstructions || 'Apply according to manufacturer protocol during low-sun hours.',
       dosage: dosage || 'Standard recommended agronomic dosage',
       precautions: precautions || 'Wear protective gear and store away from direct sunlight.',
@@ -189,13 +322,13 @@ export const createRecommendation = async (req: AuthenticatedRequest, res: Respo
       status,
     });
 
-    if (farmerId && creatorId) {
+    if (validFarmerId && creatorId) {
       await FarmerAdvisory.create({
-        farmerId,
+        farmerId: validFarmerId,
         advisorId: creatorId,
         title: `Biotech Solution: ${title}`,
         category: 'BIOTECH_INPUT',
-        message: `Recommended Product: ${productName}. Dosage: ${dosage}. Application: ${applicationInstructions}. Reasoning: ${reasoning}`,
+        message: `Recommended Product: ${productName}. Dosage: ${dosage || 'Standard'}. Application: ${applicationInstructions || 'Standard'}. Reasoning: ${reasoning}`,
         priority: 'IMPORTANT',
       });
     }
@@ -242,7 +375,7 @@ For EACH recommendation, respond in STRICT JSON array format with exactly these 
     "productName": "specific microbial product name with scientific organism names",
     "targetIssue": "the specific agronomic issue being addressed",
     "reasoning": "detailed scientific reasoning (2-3 sentences) explaining the biological mechanism",
-    "expectedBenefit": "quantified expected benefit with percentages where possible",
+    "expectedBenefit": "realistic agronomic benefit description based on established biotechnology mechanisms (note: label numerical estimates as unverified or agronomic estimates; avoid presenting unproven percentage claims as guaranteed)",
     "dosage": "exact dosage with units per acre",
     "instructions": "step-by-step application method and timing",
     "precautions": "safety and compatibility precautions"
@@ -299,7 +432,6 @@ IMPORTANT: Return ONLY the JSON array, no extra text, no markdown fences, no exp
         }
       } catch (aiError: any) {
         console.error('Gemini AI call failed, falling back to templates:', aiError.message);
-        // Fallback to templates
         parsedRecs = getFallbackTemplates(cropName, growthStage, soilCondition, diseaseSymptom);
       }
     } else {
@@ -307,13 +439,36 @@ IMPORTANT: Return ONLY the JSON array, no extra text, no markdown fences, no exp
       parsedRecs = getFallbackTemplates(cropName, growthStage, soilCondition, diseaseSymptom);
     }
 
+    // Resolve farm, farmer, and variety
+    let validVarietyId = (varietyId && mongoose.Types.ObjectId.isValid(varietyId)) ? varietyId : undefined;
+    let validFarmerId = (farmerId && mongoose.Types.ObjectId.isValid(farmerId)) ? farmerId : undefined;
+    const validFarmId = (farmId && mongoose.Types.ObjectId.isValid(farmId)) ? farmId : undefined;
+    let effectiveCropName = cropName || 'Universal';
+
+    if (validFarmId) {
+      const farmDoc = await Farm.findById(validFarmId);
+      if (farmDoc) {
+        if (!validFarmerId && farmDoc.farmerId) validFarmerId = farmDoc.farmerId.toString();
+        if (!validVarietyId && farmDoc.cropVarietyId) validVarietyId = farmDoc.cropVarietyId.toString();
+        if ((!cropName || cropName === 'Universal') && farmDoc.currentCrop) {
+          effectiveCropName = farmDoc.currentCrop;
+        }
+      }
+    }
+
+    if (!validVarietyId && effectiveCropName && effectiveCropName !== 'Universal') {
+      const matchedVar = await CropVariety.findOne({ cropName: new RegExp('^' + effectiveCropName.trim() + '$', 'i') });
+      if (matchedVar) {
+        validVarietyId = matchedVar._id.toString();
+      }
+    }
+
     // Save to database
     const createdRecs = [];
     for (const t of parsedRecs) {
-      const validVarietyId = (varietyId && mongoose.Types.ObjectId.isValid(varietyId)) ? varietyId : undefined;
-      const validFarmerId = (farmerId && mongoose.Types.ObjectId.isValid(farmerId)) ? farmerId : undefined;
-
       const rec = await BiotechnologyRecommendation.create({
+        farmId: validFarmId,
+        cropName: effectiveCropName,
         cropVarietyId: validVarietyId,
         farmerId: validFarmerId,
         creatorId,
@@ -322,7 +477,7 @@ IMPORTANT: Return ONLY the JSON array, no extra text, no markdown fences, no exp
         productName: t.productName,
         targetIssue: t.targetIssue,
         reasoning: t.reasoning,
-        expectedBenefit: t.expectedBenefit,
+        expectedBenefit: sanitizeExpectedBenefit(t.expectedBenefit),
         applicationInstructions: t.instructions,
         dosage: t.dosage,
         precautions: t.precautions,
@@ -345,7 +500,7 @@ IMPORTANT: Return ONLY the JSON array, no extra text, no markdown fences, no exp
   }
 };
 
-// Fallback templates when Gemini API is unavailable
+// Fallback templates when Gemini API is unavailable (Sanitized claims based on agronomic models)
 function getFallbackTemplates(cropName?: string, growthStage?: string, soilCondition?: string, diseaseSymptom?: string) {
   return [
     {
@@ -353,8 +508,8 @@ function getFallbackTemplates(cropName?: string, growthStage?: string, soilCondi
       title: `Consortium Bio-Inoculation Protocol for ${cropName || 'Crops'}`,
       productName: 'NutriGrow VAM Mycorrhizae & Azotobacter Chroococcum',
       targetIssue: `Root uptake deficiency and moisture stress during ${growthStage || 'Vegetative'} phase`,
-      reasoning: `Endophytic mycorrhizal fungi create a symbiotic fungal net that enhances phosphorus & micronutrient absorption by 300% in ${soilCondition || 'loamy'} soil.`,
-      expectedBenefit: '15-20% increase in vegetative root mass and 10% lower chemical fertilizer requirement.',
+      reasoning: `Endophytic mycorrhizal fungi create a symbiotic fungal net that enhances phosphorus & micronutrient bioavailability in ${soilCondition || 'loamy'} soil.`,
+      expectedBenefit: 'Promotes root colonization and nutrient uptake efficiency (Field trial estimate; unverified under variable open-field conditions).',
       dosage: '4 kg / Acre mixed with organic manure',
       instructions: 'Apply at early morning near root perimeter; irrigate lightly immediately after.',
       precautions: 'Do not mix with chemical bactericides or systemic fungicides.',
@@ -365,7 +520,7 @@ function getFallbackTemplates(cropName?: string, growthStage?: string, soilCondi
       productName: 'Bio-Cure Trichoderma viride & Bacillus amyloliquefaciens',
       targetIssue: 'Suppression of fungal spores and foliar bacterial spotting',
       reasoning: 'Trichoderma actively mycoparasitizes pathogenic fungal hyphae while Bacillus produces natural lipopeptide bio-surfactants preventing spore adhesion.',
-      expectedBenefit: 'Halts disease spread within 48-72 hours without inducing chemical resistance.',
+      expectedBenefit: 'Antagonizes foliar fungal pathogens and suppresses spore germination (Field trial estimate; response timing varies with disease pressure).',
       dosage: '5 ml / Liter water (500ml / Acre)',
       instructions: 'Foliar spray with uniform canopy coverage during late afternoon hours.',
       precautions: 'Shake well before dilution. Keep spray solution pH between 6.0 and 7.0.',
@@ -376,7 +531,7 @@ function getFallbackTemplates(cropName?: string, growthStage?: string, soilCondi
       productName: 'Trichogramma Chilonis Parasitoid Cards & Micro-Encapsulated Lures',
       targetIssue: 'Early-stage lepidopteran egg and larval infestation',
       reasoning: 'Female parasitoid wasps lay eggs inside pest eggs, preventing larval emergence before leaf perforation can occur.',
-      expectedBenefit: '80-90% reduction in larval emergence without toxic chemical residues.',
+      expectedBenefit: 'Targeted egg parasitism reduces pest emergence without toxic chemical residues (Agronomic field estimate; unverified under open-canopy conditions).',
       dosage: '5 parasite cards per acre (50,000 parasitoids/acre)',
       instructions: 'Staple cards to underside of upper leaves at 20-meter grid intervals.',
       precautions: 'Do not spray synthetic pyrethroids or organophosphates for 14 days after release.',
