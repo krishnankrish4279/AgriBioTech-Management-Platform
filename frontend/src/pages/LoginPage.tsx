@@ -351,24 +351,24 @@ export const LoginPage: React.FC = () => {
                 <Lock size={12} color="#10b981" /> Registered Demonstration Accounts:
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '0.73rem' }}>
-                <div style={{ color: 'var(--text-muted)' }}>👑 Admin (நிர்வாகி): <span style={{ color: '#c4b5fd' }}>admin@agribiotech.demo</span> <span style={{ color: '#94a3b8' }}>(Admin@123)</span></div>
-                <div style={{ color: 'var(--text-muted)' }}>🌾 Agronomist (வேளாண் அதிகாரி): <span style={{ color: '#6ee7b7' }}>agronomist@agribiotech.demo</span> <span style={{ color: '#94a3b8' }}>(Agronomist@123)</span></div>
-                <div style={{ color: 'var(--text-muted)' }}>🧬 Scientist (உயிரி தொழில்நுட்பம்): <span style={{ color: '#67e8f9' }}>scientist@agribiotech.demo</span> <span style={{ color: '#94a3b8' }}>(Scientist@123)</span></div>
-                <div style={{ color: 'var(--text-muted)' }}>🚜 Farmer (விவசாயி): <span style={{ color: '#fde68a' }}>farmer@agribiotech.demo</span> <span style={{ color: '#94a3b8' }}>(Farmer@123)</span></div>
+                <div style={{ color: 'var(--text-muted)' }}>👑 Admin: <span style={{ color: '#c4b5fd' }}>admin@agribiotech.demo</span> <span style={{ color: '#94a3b8' }}>(Admin@123)</span></div>
+                <div style={{ color: 'var(--text-muted)' }}>🌾 Agronomist: <span style={{ color: '#6ee7b7' }}>agronomist@agribiotech.demo</span> <span style={{ color: '#94a3b8' }}>(Agronomist@123)</span></div>
+                <div style={{ color: 'var(--text-muted)' }}>🧬 Scientist: <span style={{ color: '#67e8f9' }}>scientist@agribiotech.demo</span> <span style={{ color: '#94a3b8' }}>(Scientist@123)</span></div>
+                <div style={{ color: 'var(--text-muted)' }}>🚜 Farmer: <span style={{ color: '#fde68a' }}>farmer@agribiotech.demo</span> <span style={{ color: '#94a3b8' }}>(Farmer@123)</span></div>
               </div>
               <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: '8px', fontStyle: 'italic' }}>
-                Demo Passwords / மாதிரி கடவுச்சொல்: <strong style={{ color: '#38bdf8' }}>Role@123</strong> (e.g., <code style={{ color: '#fde68a' }}>Farmer@123</code> for Farmer) • Case sensitive.
+                Demonstration Passwords: <strong style={{ color: '#38bdf8' }}>Role@123</strong> (e.g., <code style={{ color: '#fde68a' }}>Farmer@123</code> for Farmer) • Case sensitive.
               </div>
             </div>
 
             <form onSubmit={handleLoginSubmit}>
               <div className="form-group">
-                <label className="form-label">Email Address / மின்னஞ்சல் முகவரி</label>
+                <label className="form-label">Email Address</label>
                 <div style={{ position: 'relative' }}>
                   <input
                     type="email"
                     className="input-field"
-                    placeholder="Enter registered email address / மின்னஞ்சல் உள்ளிடவும்"
+                    placeholder="Enter registered email address"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={submitting}
@@ -379,13 +379,13 @@ export const LoginPage: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Password / கடவுச்சொல்</label>
+                <label className="form-label">Password</label>
                 <div style={{ position: 'relative' }}>
                   <input
                     type={showPassword ? 'text' : 'password'}
                     className="input-field"
                     style={{ paddingRight: '40px' }}
-                    placeholder="Enter your password / கடவுச்சொல் உள்ளிடவும்"
+                    placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={submitting}
@@ -421,7 +421,7 @@ export const LoginPage: React.FC = () => {
                 style={{ width: '100%', marginTop: '12px' }}
                 disabled={submitting}
               >
-                {submitting ? 'Authenticating Credentials...' : 'Sign In to Portal / உள்நுழைக'}
+                {submitting ? 'Authenticating Credentials...' : 'Sign In to Portal'}
               </button>
 
               <div style={{ textAlign: 'center', marginTop: '16px' }}>

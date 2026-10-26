@@ -19,18 +19,17 @@ export const AdvisoryCard: React.FC<AdvisoryCardProps> = ({
   const { isAgronomist, isAdmin } = useAuth();
   const canManage = isAgronomist || isAdmin;
 
-  const categoryConfig: Record<string, { label: string; tamil: string; icon: any }> = {
-    DISEASE_ALERT: { label: 'Disease Warning', tamil: 'நோய் எச்சரிக்கை', icon: AlertTriangle },
-    IRRIGATION: { label: 'Watering Advice', tamil: 'பாசன வழிகாட்டல்', icon: Droplets },
-    NUTRIENT_MANAGEMENT: { label: 'Soil Nutrition', tamil: 'உர மேலாண்மை', icon: Sprout },
-    BIOTECH_INPUT: { label: 'Bio-Inputs', tamil: 'இயற்கை உயிர் உரம்', icon: Dna },
-    WEATHER_ACTION: { label: 'Weather Alert', tamil: 'வானிலை எச்சரிக்கை', icon: Wind },
-    GENERAL: { label: 'General Advice', tamil: 'பொது ஆலோசனை', icon: MessageSquare },
+  const categoryConfig: Record<string, { label: string; icon: any }> = {
+    DISEASE_ALERT: { label: 'Disease Warning', icon: AlertTriangle },
+    IRRIGATION: { label: 'Watering Guidance', icon: Droplets },
+    NUTRIENT_MANAGEMENT: { label: 'Soil Nutrition', icon: Sprout },
+    BIOTECH_INPUT: { label: 'Biological Inputs', icon: Dna },
+    WEATHER_ACTION: { label: 'Weather Alert', icon: Wind },
+    GENERAL: { label: 'General Advice', icon: MessageSquare },
   };
 
   const cat = categoryConfig[advisory.category] || {
     label: advisory.category.replace('_', ' '),
-    tamil: 'விவசாய வழிகாட்டல்',
     icon: MessageSquare,
   };
   const Icon = cat.icon;
@@ -64,7 +63,7 @@ export const AdvisoryCard: React.FC<AdvisoryCardProps> = ({
             alignItems: 'center',
             gap: '5px',
           }}>
-            <Icon size={13} color="#06b6d4" /> {cat.label} • <span style={{ color: '#34d399', fontSize: '0.7rem' }}>{cat.tamil}</span>
+            <Icon size={13} color="#06b6d4" /> {cat.label}
           </span>
 
           <PriorityBadge priority={advisory.priority} />

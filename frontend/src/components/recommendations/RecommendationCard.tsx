@@ -18,18 +18,17 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
 }) => {
   const [showInternalDetails, setShowInternalDetails] = useState(false);
 
-  const typeConfig: Record<string, { label: string; tamil: string; color: string; bg: string }> = {
-    BIOFERTILIZER: { label: 'Biofertilizer', tamil: 'உயிர் உரம்', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' },
-    BIOPESTICIDE: { label: 'Biopesticide', tamil: 'உயிர் பூச்சிக்கொல்லி', color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.12)' },
-    BIOLOGICAL_CONTROL: { label: 'Biocontrol', tamil: 'இயற்கை கட்டுப்பாடு', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.12)' },
-    VARIETY_SELECTION: { label: 'Resilient Seeds', tamil: 'நோய் எதிர்ப்பு விதைகள்', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' },
-    CROP_MANAGEMENT: { label: 'Crop Care', tamil: 'பயிர் பராமரிப்பு', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.12)' },
-    SOIL_ENHANCEMENT: { label: 'Soil Enhancer', tamil: 'மண் வள மேம்பாடு', color: '#34d399', bg: 'rgba(52, 211, 153, 0.12)' },
+  const typeConfig: Record<string, { label: string; color: string; bg: string }> = {
+    BIOFERTILIZER: { label: 'Biofertilizer', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' },
+    BIOPESTICIDE: { label: 'Biopesticide', color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.12)' },
+    BIOLOGICAL_CONTROL: { label: 'Biocontrol', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.12)' },
+    VARIETY_SELECTION: { label: 'Resilient Seeds', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' },
+    CROP_MANAGEMENT: { label: 'Crop Care', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.12)' },
+    SOIL_ENHANCEMENT: { label: 'Soil Enhancer', color: '#34d399', bg: 'rgba(52, 211, 153, 0.12)' },
   };
 
   const typeInfo = typeConfig[rec.recommendationType] || {
     label: rec.recommendationType.replace('_', ' '),
-    tamil: 'இயற்கை உரம்',
     color: '#10b981',
     bg: 'rgba(16, 185, 129, 0.12)',
   };
@@ -92,7 +91,7 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
                 letterSpacing: '0.02em',
               }}
             >
-              <Beaker size={12} /> {typeInfo.label} • <span style={{ opacity: 0.9 }}>{typeInfo.tamil}</span>
+              <Beaker size={12} /> {typeInfo.label}
             </span>
 
             {isApplied && (
@@ -110,7 +109,7 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
                   gap: '4px',
                 }}
               >
-                <Check size={11} /> Applied / தெளிக்கப்பட்டது
+                <Check size={11} /> Applied
               </span>
             )}
           </div>
@@ -154,7 +153,7 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
               }}
             >
               <span style={{ color: '#94a3b8', fontSize: '0.74rem', fontWeight: 600, display: 'block' }}>
-                TARGET ISSUE • தீர்க்கும் பயிர் பிரச்சனை
+                TARGET ISSUE
               </span>
               <span style={{ color: '#f1f5f9', fontWeight: 600, fontSize: '0.82rem' }}>
                 {rec.targetIssue}
@@ -171,7 +170,7 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
               }}
             >
               <span style={{ color: '#94a3b8', fontSize: '0.74rem', fontWeight: 600, display: 'block' }}>
-                DOSAGE & APPLICATION • மருந்தின் அளவு & தெளிக்கும் முறை
+                DOSAGE & APPLICATION
               </span>
               <span style={{ color: '#38bdf8', fontWeight: 600, fontSize: '0.82rem' }}>
                 {rec.dosage}
@@ -188,7 +187,7 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
               }}
             >
               <span style={{ color: '#34d399', fontSize: '0.74rem', fontWeight: 700, display: 'block' }}>
-                EXPECTED BENEFIT • எதிர்பார்க்கப்படும் பலன்
+                EXPECTED BENEFIT
               </span>
               <span style={{ color: '#d1fae5', fontWeight: 600, fontSize: '0.82rem' }}>
                 {rec.expectedBenefit}
@@ -223,7 +222,7 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
               gap: '6px',
             }}
           >
-            <Eye size={13} /> View Details / முழு விவரம்
+            <Eye size={13} /> View Details
           </button>
 
           {/* 7. One "Mark Applied" button where applicable */}

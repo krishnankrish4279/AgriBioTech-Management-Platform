@@ -93,14 +93,10 @@ export const DiseasePage: React.FC = () => {
       <div className="page-header">
         <div>
           <h1 className="page-title">
-            <ShieldAlert size={28} color="#ef4444" /> Disease Surveillance & Outbreak Radar • பயிர் நோய் கண்காணிப்பு மையம்
+            <ShieldAlert size={28} color="#ef4444" /> Disease Surveillance & Outbreak Radar
           </h1>
           <p className="page-subtitle">
             Geospatial epidemiological monitoring, early warning triggers, and immediate biocontrol protocols.
-            <br />
-            <span style={{ color: '#6ee7b7', fontSize: '0.82rem' }}>
-              பயிர்களில் பரவும் நோய்களை வரைபடத்தில் உடனுக்குடன் கண்காணித்து இயற்கை பாதுகாப்பு வழிகாட்டுதல் பெறும் பக்கம்.
-            </span>
           </p>
         </div>
 
@@ -109,7 +105,7 @@ export const DiseasePage: React.FC = () => {
             onClick={() => setShowReportModal(true)}
             className="btn btn-danger"
           >
-            <Plus size={16} /> Report Disease Outbreak / பயிர் நோயை பதிவு செய்க
+            <Plus size={16} /> Report Disease Outbreak
           </button>
           <button onClick={loadCases} className="btn btn-secondary" title="Refresh data">
             <RefreshCw size={16} />
@@ -138,7 +134,7 @@ export const DiseasePage: React.FC = () => {
           <input
             type="text"
             className="input-field search-input"
-            placeholder="Search pathogen name, symptoms, farm location, farmer, crop... / தேடுக..."
+            placeholder="Search pathogen name, symptoms, farm location, farmer, crop..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -151,11 +147,11 @@ export const DiseasePage: React.FC = () => {
             value={severityFilter}
             onChange={(e) => setSeverityFilter(e.target.value)}
           >
-            <option value="ALL">All Severities (அனைத்து நிலைகள்)</option>
-            <option value="CRITICAL">🔴 Critical (அவசர தீவிர நிலை)</option>
-            <option value="HIGH">🟠 High (அதிக பாதிப்பு)</option>
-            <option value="MEDIUM">🟡 Medium (மிதமான பாதிப்பு)</option>
-            <option value="LOW">🟢 Low (குறைவான பாதிப்பு)</option>
+            <option value="ALL">All Severities</option>
+            <option value="CRITICAL">🔴 Critical</option>
+            <option value="HIGH">🟠 High</option>
+            <option value="MEDIUM">🟡 Medium</option>
+            <option value="LOW">🟢 Low</option>
           </select>
 
           <select
@@ -164,12 +160,12 @@ export const DiseasePage: React.FC = () => {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
-            <option value="ALL">All Case Statuses (அனைத்து நிலைகள்)</option>
-            <option value="REPORTED">Reported (பதிவு செய்யப்பட்டது)</option>
-            <option value="ACTIVE">⚠️ Active Outbreak (தீவிர பாதிப்பு)</option>
-            <option value="INVESTIGATING">🔬 Under Investigation (ஆய்வில் உள்ளது)</option>
-            <option value="CONTAINED">🛡️ Contained / Treated (கட்டுப்படுத்தப்பட்டது)</option>
-            <option value="RESOLVED">✅ Resolved / Clear (குணமாகிவிட்டது)</option>
+            <option value="ALL">All Case Statuses</option>
+            <option value="REPORTED">Reported</option>
+            <option value="ACTIVE">⚠️ Active Outbreak</option>
+            <option value="INVESTIGATING">🔬 Under Investigation</option>
+            <option value="CONTAINED">🛡️ Contained / Treated</option>
+            <option value="RESOLVED">✅ Resolved / Clear</option>
           </select>
 
           <select

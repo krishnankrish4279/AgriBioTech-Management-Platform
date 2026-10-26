@@ -28,7 +28,9 @@ import {
   FileCheck,
   Building,
   Info,
+  Dna,
 } from 'lucide-react';
+import { formatInsectProtection, DISEASE_RESISTANCE_STANDARD_EXPLANATION } from '../utils/traitHelper';
 
 export const DiseaseReportDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -222,6 +224,7 @@ export const DiseaseReportDetailPage: React.FC = () => {
   const varietyName = diseaseCase.cropVariety?.varietyName;
   const biotechTraits = diseaseCase.cropVariety?.biotechTraits;
   const diseaseResistanceTraits = diseaseCase.cropVariety?.diseaseResistanceTraits;
+  const protectionInfo = formatInsectProtection(biotechTraits);
   const farmName = diseaseCase.farm?.farmName || (typeof diseaseCase.farm === 'string' ? diseaseCase.farm : 'Farm Plot');
   const farmerName = diseaseCase.farm?.farmer?.fullName;
   const farmerPhone = diseaseCase.farm?.farmer?.phone;
@@ -530,7 +533,7 @@ export const DiseaseReportDetailPage: React.FC = () => {
               <Building size={18} />
             </div>
             <div>
-              <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Farm & Location • நிலம் மற்றும் இருப்பிடம்</h2>
+              <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Farm & Location</h2>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Georeferenced field plot monitoring</span>
             </div>
           </div>
@@ -538,7 +541,7 @@ export const DiseaseReportDetailPage: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }}>
-                Farm Plot Name
+                Farm Location
               </div>
               <div style={{ fontSize: '0.98rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <MapPin size={16} color="#10b981" /> {farmName}
@@ -659,15 +662,15 @@ export const DiseaseReportDetailPage: React.FC = () => {
               <Sprout size={18} />
             </div>
             <div>
-              <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Crop & Variety Agronomics • பயிர் & விதை ரகம்</h2>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Host plant profile and genetic resistance</span>
+              <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Crop & Variety Details</h2>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Host plant profile, insect protection, and disease resistance</span>
             </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }}>
-                Affected Crop
+                Crop Name
               </div>
               <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Sprout size={18} color="#34d399" /> {cropName || 'Unspecified Crop'}
@@ -677,7 +680,7 @@ export const DiseaseReportDetailPage: React.FC = () => {
             {varietyName && (
               <div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }}>
-                  Cultivar / Variety Line
+                  Crop Variety
                 </div>
                 <div style={{ fontSize: '0.94rem', fontWeight: 700, color: '#38bdf8' }}>
                   {varietyName}
@@ -695,10 +698,13 @@ export const DiseaseReportDetailPage: React.FC = () => {
                 }}
               >
                 <div style={{ fontSize: '0.75rem', color: '#34d399', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>
-                  🛡️ Genetic Resistance Profile
+                  🛡️ Disease Resistance Information
                 </div>
                 <div style={{ fontSize: '0.84rem', color: '#e2e8f0', lineHeight: 1.4 }}>
                   {diseaseResistanceTraits}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', fontStyle: 'italic', marginTop: '4px' }}>
+                  {DISEASE_RESISTANCE_STANDARD_EXPLANATION}
                 </div>
               </div>
             )}
@@ -712,22 +718,34 @@ export const DiseaseReportDetailPage: React.FC = () => {
                   padding: '12px',
                 }}
               >
-                <div style={{ fontSize: '0.75rem', color: '#a78bfa', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>
-                  🧬 Engineered Biotech Traits
+                <div style={{ fontSize: '0.75rem', color: '#a78bfa', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Dna size={14} /> Insect Protection Features
                 </div>
-                <div style={{ fontSize: '0.84rem', color: '#e2e8f0', lineHeight: 1.4 }}>
-                  {biotechTraits}
-                </div>
+                {protectionInfo.insectProtectionExplanation && (
+                  <p style={{ fontSize: '0.82rem', color: '#e2e8f0', margin: '0 0 6px 0', lineHeight: 1.35 }}>
+                    {protectionInfo.insectProtectionExplanation}
+                  </p>
+                )}
+                {protectionInfo.technicalDetails && (
+                  <div style={{ fontSize: '0.74rem', color: '#c084fc', fontFamily: 'var(--font-mono, monospace)' }}>
+                    {protectionInfo.technicalDetails}
+                  </div>
+                )}
+                {protectionInfo.otherTraits && (
+                  <div style={{ fontSize: '0.74rem', color: '#cbd5e1', marginTop: '4px' }}>
+                    Additional traits: {protectionInfo.otherTraits}
+                  </div>
+                )}
               </div>
             )}
 
             {diseaseCase.affectedArea && (
               <div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }}>
-                  Estimated Affected Area
+                  Field Inspection Details
                 </div>
                 <div style={{ fontSize: '0.88rem', color: '#f59e0b', fontWeight: 600 }}>
-                  📐 {diseaseCase.affectedArea}
+                  📐 Estimated Affected Area: {diseaseCase.affectedArea}
                 </div>
               </div>
             )}
@@ -743,7 +761,7 @@ export const DiseaseReportDetailPage: React.FC = () => {
               }}
             >
               <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '6px' }}>
-                Field Surveillance Personnel
+                Field Inspection Personnel
               </div>
               <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
                 Reported By: <strong style={{ color: '#fff' }}>{reporterName}</strong> ({reporterRole})
@@ -778,7 +796,7 @@ export const DiseaseReportDetailPage: React.FC = () => {
               <ShieldAlert size={18} />
             </div>
             <div>
-              <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Field Symptoms & Pathology • பயிர் அறிகுறிகள் & பாதிப்பு</h2>
+              <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Field Symptoms & Observations</h2>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Field diagnostic observations and indicators</span>
             </div>
           </div>
@@ -800,7 +818,7 @@ export const DiseaseReportDetailPage: React.FC = () => {
           {diseaseCase.imageUrl && (
             <div style={{ marginTop: '16px' }}>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '6px' }}>
-                Field Photo Evidence • பயிர் புகைப்படம்
+                Field Photo Evidence
               </div>
               <img
                 src={diseaseCase.imageUrl}
@@ -835,7 +853,7 @@ export const DiseaseReportDetailPage: React.FC = () => {
               <FlaskConical size={18} />
             </div>
             <div>
-              <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Prescribed Treatment & Biocontrol • பரிந்துரைக்கப்பட்ட இயற்கை சிகிச்சை</h2>
+              <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Prescribed Treatment & Recommended Care</h2>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Recommended remediation protocols</span>
             </div>
           </div>

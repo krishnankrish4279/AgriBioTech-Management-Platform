@@ -65,14 +65,10 @@ export const AdvisoryPage: React.FC = () => {
       <div className="page-header">
         <div>
           <h1 className="page-title">
-            <MessageSquareShare size={28} color="#10b981" /> Farmer Advisory Services • விவசாய ஆலோசனைகள்
+            <MessageSquareShare size={28} color="#10b981" /> Farmer Advisory Services
           </h1>
           <p className="page-subtitle">
             Personalized crop advisories, seasonal weather guidance, and urgent outbreak containment instructions.
-            <br />
-            <span style={{ color: '#6ee7b7', fontSize: '0.82rem' }}>
-              பயிர் பாதுகாப்பு ஆலோசனைகள், வானிலை வழிகாட்டல் மற்றும் உடனடி நோய் தடுப்பு வழிமுறைகள்.
-            </span>
           </p>
         </div>
 
@@ -82,7 +78,7 @@ export const AdvisoryPage: React.FC = () => {
               onClick={() => setShowCreateModal(true)}
               className="btn btn-primary"
             >
-              <Plus size={16} /> Dispatch Farmer Advisory / ஆலோசனை அனுப்புக
+              <Plus size={16} /> Dispatch Farmer Advisory
             </button>
           )}
           <button onClick={loadAdvisories} className="btn btn-secondary">
@@ -98,7 +94,7 @@ export const AdvisoryPage: React.FC = () => {
           <input
             type="text"
             className="input-field search-input"
-            placeholder="Search advisory title, message body, farmer name... / தேடுக..."
+            placeholder="Search advisory title, message body, farmer name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -111,12 +107,12 @@ export const AdvisoryPage: React.FC = () => {
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
           >
-            <option value="ALL">All Categories (அனைத்து பிரிவுகள்)</option>
-            <option value="DISEASE_ALERT">Disease Warning (நோய் எச்சரிக்கை)</option>
-            <option value="IRRIGATION">Watering Advice (பாசன வழிகாட்டல்)</option>
-            <option value="NUTRIENT_MANAGEMENT">Soil Nutrition & Fertilizer (உர மேலாண்மை)</option>
-            <option value="BIOTECH_INPUT">Organic Bio-Inputs (இயற்கை உயிர் உரம்)</option>
-            <option value="WEATHER_ACTION">Weather Alert (வானிலை எச்சரிக்கை)</option>
+            <option value="ALL">All Categories</option>
+            <option value="DISEASE_ALERT">Disease Warning</option>
+            <option value="IRRIGATION">Watering Guidance</option>
+            <option value="NUTRIENT_MANAGEMENT">Soil Nutrition & Fertilizer</option>
+            <option value="BIOTECH_INPUT">Biological Inputs</option>
+            <option value="WEATHER_ACTION">Weather Alert</option>
           </select>
 
           <select
@@ -125,10 +121,10 @@ export const AdvisoryPage: React.FC = () => {
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
           >
-            <option value="ALL">All Priorities (அனைத்தும்)</option>
-            <option value="URGENT">🚨 Urgent (உடனடி)</option>
-            <option value="IMPORTANT">⚠️ Important (முக்கியம்)</option>
-            <option value="ROUTINE">🌱 Routine (வழக்கமானது)</option>
+            <option value="ALL">All Priorities</option>
+            <option value="URGENT">🚨 Urgent</option>
+            <option value="IMPORTANT">⚠️ Important</option>
+            <option value="ROUTINE">🌱 Routine</option>
           </select>
 
           <select

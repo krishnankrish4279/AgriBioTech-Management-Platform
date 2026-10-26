@@ -4,6 +4,7 @@ import { BiotechTraitBadge } from '../common/Badge';
 import { TermHelper } from '../common/TermHelper';
 import { Sprout, Clock, ShieldCheck, MapPin, Sparkles, TrendingUp, Edit3, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { formatInsectProtection, DISEASE_RESISTANCE_STANDARD_EXPLANATION } from '../../utils/traitHelper';
 
 interface VarietyCardProps {
   variety: CropVariety;
@@ -21,9 +22,7 @@ export const VarietyCard: React.FC<VarietyCardProps> = ({
   const { isBiotechExpert, isAdmin } = useAuth();
   const canManage = isBiotechExpert || isAdmin;
 
-  const biotechTraitsList = variety.biotechTraits
-    ? variety.biotechTraits.split(',').map(t => t.trim())
-    : [];
+  const protectionInfo = formatInsectProtection(variety.biotechTraits);
 
   return (
     <div className="card-glass card-glass-interactive" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -102,7 +101,7 @@ export const VarietyCard: React.FC<VarietyCardProps> = ({
         }}>
           <div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <TrendingUp size={12} color="#10b981" /> Expected Yield • மகசூல்
+              <TrendingUp size={12} color="#10b981" /> Expected Yield
             </div>
             <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#34d399', marginTop: '2px' }}>
               {variety.expectedYieldMin} - {variety.expectedYieldMax} <span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-muted)' }}>{variety.yieldUnit.split('/')[0]}</span>
@@ -111,37 +110,62 @@ export const VarietyCard: React.FC<VarietyCardProps> = ({
 
           <div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Clock size={12} color="#06b6d4" /> Maturity • அறுவடை காலம்
+              <Clock size={12} color="#06b6d4" /> Maturity
             </div>
             <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#38bdf8', marginTop: '2px' }}>
-              {variety.maturityDays} <span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-muted)' }}>Days / நாட்கள்</span>
+              {variety.maturityDays} <span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-muted)' }}>Days</span>
             </div>
           </div>
         </div>
 
-        {/* Biotech & Disease Traits */}
-        <div style={{ marginBottom: '14px' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '6px' }}>
-            Biotechnology Traits • சிறப்பு குணங்கள்:
+        {/* Insect Protection Features */}
+        {variety.biotechTraits && (
+          <div style={{
+            background: 'rgba(139, 92, 246, 0.05)',
+            border: '1px solid rgba(139, 92, 246, 0.2)',
+            borderRadius: 'var(--radius-md)',
+            padding: '10px 12px',
+            marginBottom: '12px',
+          }}>
+            <div style={{ fontSize: '0.72rem', color: '#c084fc', textTransform: 'uppercase', fontWeight: 700, marginBottom: '4px' }}>
+              🧬 Insect Protection Features
+            </div>
+            {protectionInfo.insectProtectionExplanation && (
+              <p style={{ fontSize: '0.78rem', color: '#e2e8f0', margin: '0 0 6px 0', lineHeight: 1.35 }}>
+                {protectionInfo.insectProtectionExplanation}
+              </p>
+            )}
+            {protectionInfo.technicalDetails && (
+              <div style={{ fontSize: '0.72rem', color: '#a78bfa', fontFamily: 'var(--font-mono, monospace)' }}>
+                {protectionInfo.technicalDetails}
+              </div>
+            )}
+            {protectionInfo.otherTraits && (
+              <div style={{ fontSize: '0.72rem', color: '#cbd5e1', marginTop: '4px' }}>
+                Additional traits: {protectionInfo.otherTraits}
+              </div>
+            )}
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-            {biotechTraitsList.map((t, idx) => (
-              <BiotechTraitBadge key={idx} trait={t} />
-            ))}
-          </div>
-        </div>
+        )}
 
+        {/* Disease Resistance Information */}
         {variety.diseaseResistanceTraits && (
           <div style={{
-            fontSize: '0.76rem',
-            color: 'var(--text-muted)',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '6px',
-            marginBottom: '10px'
+            background: 'rgba(16, 185, 129, 0.04)',
+            border: '1px solid rgba(16, 185, 129, 0.18)',
+            borderRadius: 'var(--radius-md)',
+            padding: '10px 12px',
+            marginBottom: '12px',
           }}>
-            <ShieldCheck size={14} color="#10b981" style={{ flexShrink: 0, marginTop: '2px' }} />
-            <span><strong>Resistances • நோய் எதிர்ப்பு:</strong> {variety.diseaseResistanceTraits}</span>
+            <div style={{ fontSize: '0.72rem', color: '#34d399', textTransform: 'uppercase', fontWeight: 700, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <ShieldCheck size={13} color="#10b981" /> Disease Resistance Information
+            </div>
+            <div style={{ fontSize: '0.78rem', color: '#e2e8f0', lineHeight: 1.35 }}>
+              {variety.diseaseResistanceTraits}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '4px', fontStyle: 'italic' }}>
+              {DISEASE_RESISTANCE_STANDARD_EXPLANATION}
+            </div>
           </div>
         )}
       </div>

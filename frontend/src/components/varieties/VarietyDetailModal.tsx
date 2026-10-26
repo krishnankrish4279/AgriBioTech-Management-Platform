@@ -1,8 +1,9 @@
 import React from 'react';
 import { Modal } from '../common/Modal';
 import { CropVariety } from '../../types';
-import { BiotechTraitBadge, SeverityBadge } from '../common/Badge';
-import { Sprout, Clock, ShieldCheck, MapPin, Layers, Dna, FileText, CheckCircle2 } from 'lucide-react';
+import { BiotechTraitBadge } from '../common/Badge';
+import { Sprout, Clock, ShieldCheck, MapPin, Layers, Dna } from 'lucide-react';
+import { formatInsectProtection, DISEASE_RESISTANCE_STANDARD_EXPLANATION } from '../../utils/traitHelper';
 
 interface VarietyDetailModalProps {
   variety: CropVariety | null;
@@ -12,9 +13,7 @@ interface VarietyDetailModalProps {
 export const VarietyDetailModal: React.FC<VarietyDetailModalProps> = ({ variety, onClose }) => {
   if (!variety) return null;
 
-  const biotechTraitsList = variety.biotechTraits
-    ? variety.biotechTraits.split(',').map(t => t.trim())
-    : [];
+  const protectionInfo = formatInsectProtection(variety.biotechTraits);
 
   return (
     <Modal
@@ -90,23 +89,46 @@ export const VarietyDetailModal: React.FC<VarietyDetailModalProps> = ({ variety,
 
         {/* Biotech & Agronomic Details */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px' }}>
-          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
-            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#a78bfa', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Dna size={16} /> Biotechnology Traits & Genetic Modifications
+          {variety.biotechTraits && (
+            <div style={{ background: 'rgba(139, 92, 246, 0.05)', border: '1px solid rgba(139, 92, 246, 0.25)', borderRadius: 'var(--radius-md)', padding: '16px' }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#c084fc', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Dna size={16} /> Insect Protection Features
+              </div>
+              {protectionInfo.insectProtectionExplanation && (
+                <p style={{ fontSize: '0.86rem', color: '#f1f5f9', margin: '0 0 8px 0', lineHeight: 1.5 }}>
+                  {protectionInfo.insectProtectionExplanation}
+                </p>
+              )}
+              {protectionInfo.technicalDetails && (
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '6px',
+                  padding: '8px 12px',
+                  fontSize: '0.78rem',
+                  color: '#a78bfa',
+                  fontFamily: 'var(--font-mono, monospace)',
+                }}>
+                  {protectionInfo.technicalDetails}
+                </div>
+              )}
+              {protectionInfo.otherTraits && (
+                <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '8px' }}>
+                  Additional traits: {protectionInfo.otherTraits}
+                </div>
+              )}
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {biotechTraitsList.map((t, idx) => (
-                <BiotechTraitBadge key={idx} trait={t} />
-              ))}
-            </div>
-          </div>
+          )}
 
-          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
-            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#34d399', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <ShieldCheck size={16} /> Disease Resistance & Immunity Matrix
+          <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.22)', borderRadius: 'var(--radius-md)', padding: '16px' }}>
+            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#34d399', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <ShieldCheck size={16} /> Disease Resistance Information
             </div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            <div style={{ fontSize: '0.86rem', color: '#e2e8f0', lineHeight: 1.5, marginBottom: '6px' }}>
               {variety.diseaseResistanceTraits || 'Standard Field Tolerance'}
+            </div>
+            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontStyle: 'italic', borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '6px' }}>
+              {DISEASE_RESISTANCE_STANDARD_EXPLANATION}
             </div>
           </div>
 

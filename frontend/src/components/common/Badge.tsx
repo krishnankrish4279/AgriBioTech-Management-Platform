@@ -2,66 +2,58 @@ import React from 'react';
 
 interface SeverityBadgeProps {
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | string;
-  showTamil?: boolean;
 }
 
-export const SeverityBadge: React.FC<SeverityBadgeProps> = ({ severity, showTamil = true }) => {
+export const SeverityBadge: React.FC<SeverityBadgeProps> = ({ severity }) => {
   const map: Record<string, string> = {
     LOW: 'badge-low',
     MEDIUM: 'badge-medium',
     HIGH: 'badge-high',
     CRITICAL: 'badge-critical',
   };
-  const tamilLabels: Record<string, string> = {
-    LOW: 'குறைவு',
-    MEDIUM: 'மிதமானது',
-    HIGH: 'அதிகம்',
-    CRITICAL: 'அவசரம்',
+  const labels: Record<string, string> = {
+    LOW: 'Low Severity',
+    MEDIUM: 'Moderate Severity',
+    HIGH: 'High Severity',
+    CRITICAL: 'Critical Severity',
   };
   const sev = (severity || 'MEDIUM').toUpperCase();
   return (
-    <span className={`badge ${map[sev] || 'badge-medium'}`} title={`${sev}: ${tamilLabels[sev] || ''}`}>
-      {sev} {showTamil && tamilLabels[sev] ? <span style={{ opacity: 0.85, fontSize: '0.9em', fontWeight: 600 }}>• {tamilLabels[sev]}</span> : null}
+    <span className={`badge ${map[sev] || 'badge-medium'}`} title={labels[sev] || sev}>
+      {sev}
     </span>
   );
 };
 
 interface StatusBadgeProps {
   status: string;
-  showTamil?: boolean;
 }
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, showTamil = true }) => {
+export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
   let styleClass = 'badge-medium';
   let label = status ? status.replace('_', ' ') : 'UNKNOWN';
-  let tamil = '';
 
   const normalized = (status || '').toUpperCase();
   if (normalized === 'ACTIVE' || normalized === 'APPLIED') {
     styleClass = 'badge-critical';
     label = 'Active';
-    tamil = 'தீவிர பாதிப்பு';
   } else if (normalized === 'RESOLVED') {
     styleClass = 'badge-low';
     label = 'Resolved';
-    tamil = 'குணமாகிவிட்டது';
   } else if (normalized === 'CONTAINED') {
     styleClass = 'badge-low';
     label = 'Contained';
-    tamil = 'கட்டுப்படுத்தப்பட்டது';
   } else if (normalized === 'INVESTIGATING' || normalized === 'PENDING_REVIEW') {
     styleClass = 'badge-high';
     label = 'Under Investigation';
-    tamil = 'ஆய்வில் உள்ளது';
   } else if (normalized === 'REPORTED') {
     styleClass = 'badge-medium';
     label = 'Reported';
-    tamil = 'பதிவு செய்யப்பட்டது';
   }
 
   return (
-    <span className={`badge ${styleClass}`} title={`${label}: ${tamil}`}>
-      {label} {showTamil && tamil ? <span style={{ opacity: 0.85, fontSize: '0.9em', fontWeight: 600 }}>• {tamil}</span> : null}
+    <span className={`badge ${styleClass}`} title={label}>
+      {label}
     </span>
   );
 };
@@ -95,7 +87,7 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({ role }) => {
           fontWeight: 700,
         }}
       >
-        🛡️ Admin (நிர்வாகி)
+        🛡️ Admin
       </span>
     );
   }
@@ -110,7 +102,7 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({ role }) => {
           fontWeight: 700,
         }}
       >
-        🌾 Agronomist (வேளாண் அதிகாரி)
+        🌾 Agronomist
       </span>
     );
   }
@@ -125,7 +117,7 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({ role }) => {
           fontWeight: 700,
         }}
       >
-        🔬 Scientist (உயிரி தொழில்நுட்ப நிபுணர்)
+        🔬 Scientist
       </span>
     );
   }
@@ -139,7 +131,7 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({ role }) => {
         fontWeight: 700,
       }}
     >
-      👨‍🌾 Farmer (விவசாயி)
+      👨‍🌾 Farmer
     </span>
   );
 };
@@ -151,11 +143,10 @@ interface PriorityBadgeProps {
 export const PriorityBadge: React.FC<PriorityBadgeProps> = ({ priority }) => {
   const upper = (priority || '').toUpperCase();
   if (upper === 'URGENT') {
-    return <span className="badge badge-critical" title="Urgent Action / உடனடி நடவடிக்கை">🚨 Urgent (உடனடி)</span>;
+    return <span className="badge badge-critical" title="Urgent Action Required">🚨 Urgent</span>;
   }
   if (upper === 'IMPORTANT') {
-    return <span className="badge badge-high" title="Important Notice / முக்கியமானது">⚠️ Important (முக்கியம்)</span>;
+    return <span className="badge badge-high" title="Important Notice">⚠️ Important</span>;
   }
-  return <span className="badge badge-low" title="Normal Field Advice / வழக்கமான வழிகாட்டல்">🌱 Routine (வழக்கமானது)</span>;
+  return <span className="badge badge-low" title="Standard Advisory">🌱 Routine</span>;
 };
-

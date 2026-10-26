@@ -69,14 +69,10 @@ export const RecommendationsPage: React.FC = () => {
       <div className="page-header">
         <div>
           <h1 className="page-title">
-            <Dna size={28} color="#06b6d4" /> Biotechnology & Bio-Crop Solutions • இயற்கை உரம் & பயிர் பாதுகாப்பு தீர்வுகள்
+            <Dna size={28} color="#06b6d4" /> Biotechnology & Bio-Crop Solutions
           </h1>
           <p className="page-subtitle">
             Microbial biofertilizers, biocontrol parasitoids, biopesticides, and genetically resilient seed prescriptions.
-            <br />
-            <span style={{ color: '#6ee7b7', fontSize: '0.82rem' }}>
-              மண்வளத்தை பெருக்கும் இயற்கை உயிர் உரம், வேம்பு பூச்சி விரட்டி மற்றும் நோய் எதிர்ப்பு விதைகளின் வழிகாட்டி.
-            </span>
           </p>
         </div>
 
@@ -85,14 +81,14 @@ export const RecommendationsPage: React.FC = () => {
             onClick={() => setShowAIModal(true)}
             className="btn btn-biotech"
           >
-            <Sparkles size={16} /> Run AI Recommender / AI ஆலோசனை
+            <Sparkles size={16} /> Run AI Recommender
           </button>
           {canPrescribe && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="btn btn-primary"
             >
-              <Plus size={16} /> Prescribe Expert Protocol / புதிய பரிந்துரை
+              <Plus size={16} /> Prescribe Expert Protocol
             </button>
           )}
           <button onClick={loadRecommendations} className="btn btn-secondary">
@@ -108,7 +104,7 @@ export const RecommendationsPage: React.FC = () => {
           <input
             type="text"
             className="input-field search-input"
-            placeholder="Search recommendation title, product formulation, biological mechanism... / தேடுக..."
+            placeholder="Search recommendation title, product formulation, biological mechanism..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -121,13 +117,13 @@ export const RecommendationsPage: React.FC = () => {
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
           >
-            <option value="ALL">All Categories (அனைத்து தீர்வுகள்)</option>
-            <option value="BIOFERTILIZER">Biofertilizers & Inoculants (உயிர் உரம்)</option>
-            <option value="BIOPESTICIDE">Biopesticides (உயிர் பூச்சிக்கொல்லி)</option>
-            <option value="BIOLOGICAL_CONTROL">Biological Control (இயற்கை கட்டுப்பாடு)</option>
-            <option value="VARIETY_SELECTION">Resilient Seed Selection (நோய் எதிர்ப்பு விதைகள்)</option>
-            <option value="CROP_MANAGEMENT">Crop Care Practices (பயிர் பராமரிப்பு)</option>
-            <option value="SOIL_ENHANCEMENT">Soil Enhancers (மண் வள மேம்பாடு)</option>
+            <option value="ALL">All Categories</option>
+            <option value="BIOFERTILIZER">Biofertilizers & Inoculants</option>
+            <option value="BIOPESTICIDE">Biopesticides</option>
+            <option value="BIOLOGICAL_CONTROL">Biological Control</option>
+            <option value="VARIETY_SELECTION">Resilient Seed Selection</option>
+            <option value="CROP_MANAGEMENT">Crop Care Practices</option>
+            <option value="SOIL_ENHANCEMENT">Soil Enhancers</option>
           </select>
 
           <select

@@ -1,103 +1,87 @@
 import React, { useState } from 'react';
-import { HelpCircle, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
 
 export interface TermDefinition {
   term: string;
   simpleEnglish: string;
-  tamilTitle: string;
-  tamilDesc: string;
+  farmerNote?: string;
 }
 
 export const GLOSSARY: Record<string, TermDefinition> = {
   BIOFERTILIZER: {
     term: 'Biofertilizer',
-    simpleEnglish: 'Natural living microbes (bacteria & fungi) that feed roots and enrich soil without chemicals.',
-    tamilTitle: 'உயிர் உரம் (Bio-Fertilizer)',
-    tamilDesc: 'மண்ணின் வளத்தை பெருக்கி வேர்களுக்கு சத்தூட்டும் இயற்கை நுண்ணுயிர் உரம்.',
+    simpleEnglish: 'Natural living microbes (beneficial bacteria and fungi) that nourish plant roots and enrich the soil naturally.',
+    farmerNote: 'Helps improve soil health and nutrient uptake without chemical residues.',
   },
   BIOPESTICIDE: {
     term: 'Biopesticide',
-    simpleEnglish: 'Eco-friendly pest spray made from neem and beneficial bacteria that stops pests safely.',
-    tamilTitle: 'உயிர் பூச்சிக்கொல்லி (Bio-Pesticide)',
-    tamilDesc: 'வேம்பு மற்றும் நன்மை செய்யும் பாக்டீரியாவால் செய்யப்பட்ட இயற்கை பூச்சி விரட்டி.',
+    simpleEnglish: 'Targeted, eco-friendly crop protection made from natural plant extracts or beneficial microbes to suppress pest populations.',
+    farmerNote: 'Protects crops while preserving beneficial pollinators and soil health.',
   },
   BIOCONTROL: {
-    term: 'Biocontrol / Biological Control',
-    simpleEnglish: 'Using friendly protector insects or good fungi to stop pests naturally.',
-    tamilTitle: 'உயிரியல் கட்டுப்பாடு (Biocontrol)',
-    tamilDesc: 'நன்மை செய்யும் பூச்சிகள் மற்றும் பூஞ்சைகள் மூலம் பயிர் பூச்சிகளை இயற்கை வழியில் கட்டுப்படுத்துதல்.',
+    term: 'Biological Control',
+    simpleEnglish: 'Using natural beneficial organisms, such as protector insects or friendly fungi, to help manage crop pests and diseases.',
+    farmerNote: 'A natural approach to keep pest numbers below damaging levels.',
   },
   VARIETY: {
     term: 'Crop Variety / Cultivar',
-    simpleEnglish: 'A specially bred seed type selected for high yield, disease defense, or drought tolerance.',
-    tamilTitle: 'விதை ரகம் (Crop Variety)',
-    tamilDesc: 'அதிக விளைச்சல் மற்றும் வறட்சி தாங்கும் திறன் கொண்ட தேர்ந்தெடுக்கப்பட்ட விதை வகை.',
+    simpleEnglish: 'A selectively bred crop type chosen for reliable harvest yield, disease defense, or climate resilience.',
+    farmerNote: 'Different varieties perform best under specific regional soil and water conditions.',
   },
   BIOTECH_TRAITS: {
-    term: 'Biotech Traits',
-    simpleEnglish: 'Special genetic protections bred into the seed against bollworms, drought, or heat.',
-    tamilTitle: 'மரபணு சிறப்பு குணங்கள் (Biotech Traits)',
-    tamilDesc: 'பயிரில் பூச்சி மற்றும் வறட்சியை தாங்கி வளரும் வகையில் உள்ள இயற்கை எதிர்ப்பு குணங்கள்.',
+    term: 'Insect Protection & Biotech Features',
+    simpleEnglish: 'Specific characteristics developed in the crop to assist against target caterpillar pests, drought, or heat stress.',
+    farmerNote: 'Helps minimize yield loss from target insect feeding when present in the verified record.',
   },
   DISEASE_RESISTANCE: {
-    term: 'Disease Resistance',
-    simpleEnglish: 'The plant’s natural ability to resist infections like blast, blight, or leaf curl.',
-    tamilTitle: 'நோய் எதிர்ப்பு திறன் (Disease Resistance)',
-    tamilDesc: 'கருகல், இலைச்சுருள் போன்ற கொடிய நோய்கள் தாக்காமல் பயிர் தன்னைத்தானே பாதுகாக்கும் திறன்.',
+    term: 'Disease Resistance Information',
+    simpleEnglish: 'The natural capability of a crop variety to withstand specific infections, such as blast, blight, or fruit rot.',
+    farmerNote: 'Protection depends on the specific disease strain, weather, and overall growing conditions.',
   },
   PATHOGEN: {
-    term: 'Pathogen / Disease Agent',
-    simpleEnglish: 'The microscopic fungus, bacteria, virus, or pest causing plant damage.',
-    tamilTitle: 'நோய் கிருமி (Pathogen)',
-    tamilDesc: 'பயிரை தாக்கி நோய் உண்டாக்கும் பூஞ்சை, பாக்டீரியா அல்லது வைரஸ் கிருமி.',
+    term: 'Disease Agent / Pathogen',
+    simpleEnglish: 'A microscopic fungus, bacteria, or virus that causes damage to leaves, stems, roots, or fruit.',
+    farmerNote: 'Prompt diagnosis allows targeted biological control before infection spreads.',
   },
   QUARANTINE: {
-    term: 'Quarantine / Containment',
-    simpleEnglish: 'Isolating the infected plant patch to prevent the disease from spreading across your entire field.',
-    tamilTitle: 'தனிமைப்படுத்துதல் (Containment)',
-    tamilDesc: 'நோய் மற்ற பயிர்களுக்கு பரவாமல் இருக்க பாதிக்கப்பட்ட இடத்தை சுற்றிலும் தடுத்து நிறுத்துதல்.',
+    term: 'Containment & Quarantine',
+    simpleEnglish: 'Managing and isolating affected crop areas to stop disease or pests from moving into neighboring healthy plots.',
+    farmerNote: 'Applying barrier treatments prevents field-wide spread.',
   },
   MATURITY_DAYS: {
-    term: 'Maturity Days',
-    simpleEnglish: 'Total number of days from sowing to full harvest readiness.',
-    tamilTitle: 'அறுவடை காலம் (Maturity Period)',
-    tamilDesc: 'விதை விதைத்த நாளில் இருந்து அறுவடைக்கு தயாராகும் மொத்த நாட்கள்.',
+    term: 'Maturity Duration',
+    simpleEnglish: 'The estimated number of days from sowing until the crop is ready for harvest.',
+    farmerNote: 'Helps schedule water, nutrition, and harvest operations efficiently.',
   },
   EXPECTED_YIELD: {
-    term: 'Expected Yield',
-    simpleEnglish: 'Estimated harvest quantity per acre under standard water and nutrient care.',
-    tamilTitle: 'எதிர்பார்க்கப்படும் மகசூல் (Expected Yield)',
-    tamilDesc: 'சரியான பாசனம் மற்றும் உரமிடுதலின் மூலம் ஏக்கருக்கு கிடைக்கக்கூடிய உத்தேச மகசூல்.',
+    term: 'Expected Yield Range',
+    simpleEnglish: 'The estimated harvest quantity per acre under standard agronomic management and adequate irrigation.',
+    farmerNote: 'Actual yields vary depending on weather, soil fertility, and pest pressure.',
   },
   ACTIVE_OUTBREAK: {
     term: 'Active Outbreak',
-    simpleEnglish: 'Disease currently active in the area; requires rapid field inspection and treatment.',
-    tamilTitle: 'தீவிர பாதிப்பு (Active Outbreak)',
-    tamilDesc: 'பயிர்களில் நோய் தீவிரமாக பரவி வருகிறது; உடனடி கவனிப்பு மற்றும் தெளிப்பு தேவை.',
+    simpleEnglish: 'An active disease or pest issue identified in the area that warrants field inspection and prompt care.',
+    farmerNote: 'Review recommended treatment protocols to safeguard your crop.',
   },
   UNDER_INVESTIGATION: {
     term: 'Under Investigation',
-    simpleEnglish: 'Agronomist or expert is reviewing symptoms to recommend the best bio-treatment.',
-    tamilTitle: 'ஆய்வில் உள்ளது (Under Investigation)',
-    tamilDesc: 'வேளாண் அதிகாரி ஆய்வு செய்கிறார்; விரைவில் சரியான மருந்து ஆலோசனை வழங்கப்படும்.',
+    simpleEnglish: 'Field agronomists or plant specialists are evaluating symptoms to provide an accurate diagnosis and prescription.',
+    farmerNote: 'Recommended remedies will be published as soon as assessment completes.',
   },
   CONTAINED: {
     term: 'Contained',
-    simpleEnglish: 'Spread has been stopped with treatment; crops are recovering.',
-    tamilTitle: 'கட்டுப்படுத்தப்பட்டது (Contained)',
-    tamilDesc: 'மருந்து தெளித்ததால் நோய் பரவுவது நின்று பயிர் மீண்டு வருகிறது.',
+    simpleEnglish: 'Disease progression has been halted through applied treatments and the plants are recovering.',
+    farmerNote: 'Continue monitoring according to agronomist instructions.',
   },
   RESOLVED: {
-    term: 'Resolved / Clear',
-    simpleEnglish: 'Crop has fully recovered, and the farm plot is now healthy and clear.',
-    tamilTitle: 'தீர்க்கப்பட்டது (Resolved)',
-    tamilDesc: 'பயிர் பூரணமாக குணமாகி நிலம் ஆரோக்கியமாக உள்ளது.',
+    term: 'Resolved',
+    simpleEnglish: 'The crop has recovered from the issue and the farm plot has returned to normal healthy status.',
+    farmerNote: 'Normal cultivation practices can continue.',
   },
   SOIL_MOISTURE: {
     term: 'Soil Moisture',
-    simpleEnglish: 'Amount of water in the root zone: Dry (needs water), Optimal (just right), or Wet.',
-    tamilTitle: 'மண் ஈரப்பதம் (Soil Moisture)',
-    tamilDesc: 'பயிர் வேர்களில் உள்ள நீர் அளவு: வறண்டது (தண்ணீர் தேவை), மிதமானது (சரியானது), ஈரமானது.',
+    simpleEnglish: 'The amount of available moisture in the root zone: Dry (irrigation needed), Optimal, or Wet.',
+    farmerNote: 'Maintaining optimal root moisture reduces crop vulnerability to infections.',
   },
 };
 
@@ -105,44 +89,24 @@ interface TermHelperProps {
   termKey: keyof typeof GLOSSARY | string;
   showBadge?: boolean;
   inlineLabel?: string;
-  tamilLabel?: string;
 }
 
 export const TermHelper: React.FC<TermHelperProps> = ({
   termKey,
-  showBadge = false,
   inlineLabel,
-  tamilLabel,
 }) => {
   const [open, setOpen] = useState(false);
   const info = GLOSSARY[termKey] || {
     term: inlineLabel || termKey,
     simpleEnglish: 'Agricultural and crop protection guidance.',
-    tamilTitle: tamilLabel || 'விவசாய வழிகாட்டல்',
-    tamilDesc: 'பயிர் பாதுகாப்பு மற்றும் எளிய விவசாய விளக்கம்.',
+    farmerNote: 'Consult your local field agronomist for customized recommendations.',
   };
 
   const label = inlineLabel || info.term;
-  const tamil = tamilLabel || info.tamilTitle;
 
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', position: 'relative' }}>
       <span>{label}</span>
-      {tamil && (
-        <span
-          style={{
-            fontSize: '0.78em',
-            color: '#34d399',
-            fontWeight: 600,
-            background: 'rgba(16, 185, 129, 0.1)',
-            padding: '1px 6px',
-            borderRadius: '4px',
-            border: '1px solid rgba(16, 185, 129, 0.25)',
-          }}
-        >
-          {tamil}
-        </span>
-      )}
       <button
         type="button"
         onClick={(e) => {
@@ -161,7 +125,7 @@ export const TermHelper: React.FC<TermHelperProps> = ({
           alignItems: 'center',
           justifyContent: 'center',
         }}
-        title="Click for farmer explanation"
+        title="Click for plain English explanation"
         aria-label="Explain agricultural term"
       >
         <Info size={13} color="#06b6d4" />
@@ -193,14 +157,13 @@ export const TermHelper: React.FC<TermHelperProps> = ({
           <div style={{ fontSize: '0.76rem', color: '#e2e8f0', lineHeight: 1.4, marginBottom: '6px' }}>
             {info.simpleEnglish}
           </div>
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '6px' }}>
-            <div style={{ fontSize: '0.74rem', color: '#34d399', fontWeight: 700 }}>
-              {info.tamilTitle}
+          {info.farmerNote && (
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '6px' }}>
+              <div style={{ fontSize: '0.72rem', color: '#34d399', lineHeight: 1.35 }}>
+                ℹ️ {info.farmerNote}
+              </div>
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.35, marginTop: '2px' }}>
-              {info.tamilDesc}
-            </div>
-          </div>
+          )}
         </div>
       )}
     </span>
