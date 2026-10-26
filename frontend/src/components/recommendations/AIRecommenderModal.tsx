@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
 import { api } from '../../api/client';
-import { Farm, CropVariety } from '../../types';
-import { Sparkles, Dna, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Farm, CropVariety, DiseaseCase, FieldObservation } from '../../types';
+import { Sparkles, Dna, CheckCircle2, AlertCircle, RefreshCw, AlertTriangle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface AIRecommenderModalProps {
@@ -28,22 +28,131 @@ export const AIRecommenderModal: React.FC<AIRecommenderModalProps> = ({
   const [generatedResults, setGeneratedResults] = useState<any[] | null>(null);
   const [error, setError] = useState('');
 
+  // Farm-to-crop matching and surveillance states
+  const [mismatchConfirmed, setMismatchConfirmed] = useState(false);
+  const [loadingFarmData, setLoadingFarmData] = useState(false);
+  const [loadedFarmSummary, setLoadedFarmSummary] = useState<string | null>(null);
+
   useEffect(() => {
     if (isOpen) {
       api.farmers.getFarms().then(setFarms).catch(console.error);
       api.varieties.getAll().then(setVarieties).catch(console.error);
       setGeneratedResults(null);
       setError('');
+      setMismatchConfirmed(false);
+      setLoadedFarmSummary(null);
     }
   }, [isOpen]);
 
+  // Find currently selected farm and its registered crop
+  const selectedFarm = farms.find(f => f.id === selectedFarmId);
+  const registeredCrop = selectedFarm ? (
+    selectedFarm.currentCrop ||
+    varieties.find(v => v.id === selectedFarm.cropVarietyId)?.cropName ||
+    (selectedFarm.farmer?.primaryCrops ? selectedFarm.farmer.primaryCrops.split(',')[0].trim() : '')
+  ) : '';
+
+  // Determine if a farm is selected and there is a genuine crop mismatch
+  const isCropMismatch = Boolean(
+    selectedFarm &&
+    registeredCrop &&
+    selectedCrop.trim() &&
+    !registeredCrop.toLowerCase().includes(selectedCrop.trim().toLowerCase()) &&
+    !selectedCrop.trim().toLowerCase().includes(registeredCrop.toLowerCase())
+  );
+
+  // When user selects a specific farm, load its registered crop and relevant available soil and surveillance data
+  const handleFarmChange = async (farmId: string) => {
+    setSelectedFarmId(farmId);
+    setMismatchConfirmed(false);
+    setError('');
+
+    if (!farmId) {
+      // Universal / General Synthesis
+      setLoadedFarmSummary(null);
+      return;
+    }
+
+    const farm = farms.find(f => f.id === farmId);
+    if (!farm) return;
+
+    setLoadingFarmData(true);
+
+    // 1. Determine registered crop
+    let crop = farm.currentCrop;
+    if (!crop && farm.cropVarietyId) {
+      const variety = varieties.find(v => v.id === farm.cropVarietyId);
+      if (variety?.cropName) {
+        crop = variety.cropName;
+      }
+    }
+    if (!crop && farm.farmer?.primaryCrops) {
+      crop = farm.farmer.primaryCrops.split(',')[0].trim();
+    }
+
+    if (crop) {
+      setSelectedCrop(crop);
+    }
+
+    // 2. Load soil profile
+    if (farm.soilType) {
+      const soilText = farm.soilType + (farm.irrigationType ? ` (${farm.irrigationType})` : '');
+      setSoilCondition(soilText);
+    }
+
+    // 3. Load available surveillance and observation data
+    try {
+      const [diseaseCases, observations] = await Promise.all([
+        api.diseases.getAll({ farmId: farm.id }).catch(() => [] as DiseaseCase[]),
+        api.observations.getAll({ farmId: farm.id }).catch(() => [] as FieldObservation[]),
+      ]);
+
+      const summaryParts: string[] = [];
+      if (crop) summaryParts.push(`Registered Crop: ${crop}`);
+      if (farm.soilType) summaryParts.push(`Soil: ${farm.soilType}`);
+
+      // If active disease cases exist for this farm, load their verified symptoms
+      if (diseaseCases && diseaseCases.length > 0) {
+        const activeCase = diseaseCases.find(d => d.status === 'ACTIVE' || d.severity === 'CRITICAL' || d.severity === 'HIGH') || diseaseCases[0];
+        if (activeCase) {
+          const symptomText = activeCase.symptoms ? `${activeCase.diseaseName} (${activeCase.symptoms})` : activeCase.diseaseName;
+          setDiseaseSymptom(symptomText);
+          summaryParts.push(`Surveillance: ${activeCase.diseaseName}`);
+        }
+      } else {
+        setDiseaseSymptom('Preventative health maintenance and routine bio-protection');
+      }
+
+      // If field observation exists, sync growth stage
+      if (observations && observations.length > 0) {
+        const latestObs = observations[0];
+        if (latestObs.growthStage) {
+          setGrowthStage(latestObs.growthStage);
+          summaryParts.push(`Observed Stage: ${latestObs.growthStage}`);
+        }
+      }
+
+      setLoadedFarmSummary(summaryParts.join(' • '));
+    } catch (err) {
+      console.warn('Could not load extra surveillance details for farm:', err);
+    } finally {
+      setLoadingFarmData(false);
+    }
+  };
+
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Guard against unconfirmed farm-to-crop mismatch
+    if (isCropMismatch && !mismatchConfirmed) {
+      setError(`Crop mismatch detected: "${selectedFarm?.farmName}" is registered for "${registeredCrop}", but "${selectedCrop}" is entered. Please either reset to "${registeredCrop}" or confirm your selection below before generating recommendations.`);
+      return;
+    }
+
     setGenerating(true);
     setError('');
 
     try {
-      const selectedFarm = farms.find(f => f.id === selectedFarmId);
       const res = await api.recommendations.generateAI({
         cropName: selectedCrop,
         growthStage,
@@ -88,8 +197,12 @@ export const AIRecommenderModal: React.FC<AIRecommenderModalProps> = ({
             color: '#f87171',
             fontSize: '0.85rem',
             marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
           }}>
-            {error}
+            <AlertCircle size={16} style={{ flexShrink: 0 }} />
+            <div>{error}</div>
           </div>
         )}
 
@@ -102,32 +215,122 @@ export const AIRecommenderModal: React.FC<AIRecommenderModalProps> = ({
             <div className="grid-2">
               <div className="form-group">
                 <label className="form-label">Target Farm & Farmer</label>
-                <select
-                  className="select-field"
-                  value={selectedFarmId}
-                  onChange={(e) => setSelectedFarmId(e.target.value)}
-                >
-                  <option value="">Universal / General Synthesis</option>
-                  {farms.map(f => (
-                    <option key={f.id} value={f.id}>
-                      {f.farmName} ({f.farmer?.fullName})
-                    </option>
-                  ))}
-                </select>
+                <div style={{ position: 'relative' }}>
+                  <select
+                    className="select-field"
+                    value={selectedFarmId}
+                    onChange={(e) => handleFarmChange(e.target.value)}
+                    disabled={loadingFarmData}
+                  >
+                    <option value="">Universal / General Synthesis</option>
+                    {farms.map(f => (
+                      <option key={f.id} value={f.id}>
+                        {f.farmName} ({f.farmer?.fullName || 'Farmer'})
+                      </option>
+                    ))}
+                  </select>
+                  {loadingFarmData && (
+                    <div style={{ position: 'absolute', right: '30px', top: '50%', transform: 'translateY(-50%)' }}>
+                      <RefreshCw size={14} className="spin" color="#06b6d4" />
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Crop Specimen *</label>
+                <label className="form-label">
+                  Crop Specimen *
+                  {registeredCrop && selectedFarm && (
+                    <span style={{ fontSize: '0.72rem', color: '#34d399', textTransform: 'none', marginLeft: '6px', fontWeight: 500 }}>
+                      (Registered: {registeredCrop})
+                    </span>
+                  )}
+                </label>
                 <input
                   type="text"
                   className="input-field"
                   value={selectedCrop}
-                  onChange={(e) => setSelectedCrop(e.target.value)}
-                  placeholder="e.g. Wheat, Rice, Bt-Cotton"
+                  onChange={(e) => {
+                    setSelectedCrop(e.target.value);
+                    setMismatchConfirmed(false);
+                    setError('');
+                  }}
+                  placeholder="e.g. Wheat, Rice, Chilli, Cotton"
                   required
                 />
               </div>
             </div>
+
+            {/* Loaded Farm Records Summary */}
+            {selectedFarm && loadedFarmSummary && (
+              <div style={{
+                background: 'rgba(6, 182, 212, 0.08)',
+                border: '1px solid rgba(6, 182, 212, 0.25)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '8px 12px',
+                marginBottom: '16px',
+                fontSize: '0.78rem',
+                color: '#67e8f9',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}>
+                <Dna size={14} style={{ flexShrink: 0, color: '#22d3ee' }} />
+                <span><strong>Loaded Farm Records:</strong> {loadedFarmSummary}</span>
+              </div>
+            )}
+
+            {/* Crop & Farm Mismatch Warning & Confirmation Box */}
+            {isCropMismatch && (
+              <div style={{
+                background: 'rgba(245, 158, 11, 0.12)',
+                border: '1px solid rgba(245, 158, 11, 0.35)',
+                borderRadius: 'var(--radius-md)',
+                padding: '12px 14px',
+                marginBottom: '16px',
+                color: '#fbbf24',
+                fontSize: '0.84rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                  <AlertTriangle size={18} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    <strong>Crop Mismatch Warning:</strong> The selected farm <strong>"{selectedFarm?.farmName}"</strong> is registered for <strong>{registeredCrop}</strong>, but you have specified <strong>"{selectedCrop}"</strong>.
+                    <div style={{ fontSize: '0.78rem', color: '#fde68a', marginTop: '4px' }}>
+                      Biotechnology recommendations are crop-specific. Please confirm if you intend to generate recommendations for an alternate or rotational crop, or reset to the farm's registered crop.
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCrop(registeredCrop);
+                      setMismatchConfirmed(false);
+                      setError('');
+                    }}
+                    className="btn btn-sm btn-secondary"
+                    style={{ borderColor: 'rgba(245, 158, 11, 0.5)', color: '#fff' }}
+                  >
+                    ✓ Reset to Registered Crop ({registeredCrop})
+                  </button>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#fef3c7', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={mismatchConfirmed}
+                      onChange={(e) => {
+                        setMismatchConfirmed(e.target.checked);
+                        if (e.target.checked) setError('');
+                      }}
+                      style={{ accentColor: '#f59e0b', width: '15px', height: '15px' }}
+                    />
+                    Confirm: Proceed with "{selectedCrop}" for this farm
+                  </label>
+                </div>
+              </div>
+            )}
 
             <div className="grid-2">
               <div className="form-group">
@@ -251,3 +454,5 @@ export const AIRecommenderModal: React.FC<AIRecommenderModalProps> = ({
     </Modal>
   );
 };
+
+export default AIRecommenderModal;
