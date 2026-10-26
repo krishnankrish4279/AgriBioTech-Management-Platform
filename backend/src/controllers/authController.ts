@@ -1,10 +1,65 @@
 import { Request, Response } from 'express';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { User, Farmer, ActivityLog } from '../models';
 import { AuthenticatedRequest } from '../middleware/auth';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'agribiotech_super_secret_jwt_key_2026';
+
+// Password strength validator and breach dictionary guard
+export const validatePasswordStrength = (password: string): { valid: boolean; reason?: string } => {
+  if (!password || typeof password !== 'string') {
+    return { valid: false, reason: 'Password is required.' };
+  }
+
+  if (password.length < 8) {
+    return { valid: false, reason: 'Password must be at least 8 characters in length.' };
+  }
+
+  if (!/[a-z]/.test(password)) {
+    return { valid: false, reason: 'Password must include at least one lowercase letter.' };
+  }
+
+  if (!/[A-Z]/.test(password)) {
+    return { valid: false, reason: 'Password must include at least one uppercase letter.' };
+  }
+
+  if (!/[0-9]/.test(password)) {
+    return { valid: false, reason: 'Password must include at least one numeric digit (0-9).' };
+  }
+
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    return { valid: false, reason: 'Password must include at least one special character (!@#$%^&* etc.).' };
+  }
+
+  // Known breached / public demo dictionary passwords blocklist
+  const breachedPatterns = [
+    'farmer@123',
+    'admin@123',
+    'agronomist@123',
+    'scientist@123',
+    'password',
+    'password123',
+    'password1234',
+    '12345678',
+    'qwerty123',
+    'welcome123',
+    'pass@123',
+    'farmer123',
+    'agribiotech123',
+  ];
+
+  const lower = password.toLowerCase().trim();
+  if (breachedPatterns.includes(lower)) {
+    return {
+      valid: false,
+      reason: 'This password is a common default pattern found in public data breach dictionaries. Please choose a unique, personal password to protect your account.',
+    };
+  }
+
+  return { valid: true };
+};
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -50,7 +105,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       }
     });
   } catch (error: any) {
-    console.error('Login error:', error);
+    console.error('Login error:', error.message);
     res.status(500).json({ error: 'Internal server error during login' });
   }
 };
@@ -86,7 +141,7 @@ export const getMe = async (req: AuthenticatedRequest, res: Response): Promise<v
       farmerProfile,
     });
   } catch (error: any) {
-    console.error('Get profile error:', error);
+    console.error('Get profile error:', error.message);
     res.status(500).json({ error: 'Failed to fetch user profile' });
   }
 };
@@ -109,19 +164,20 @@ export const getUsers = async (_req: AuthenticatedRequest, res: Response): Promi
   }
 };
 
+// Self-service Farmer Registration with unique password creation
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, email, password, role, phone, state, district, farmSizeAcres, primaryCrops } = req.body;
 
     if (!name || !email || !password) {
-      res.status(400).json({ error: 'Name, email and password are required' });
+      res.status(400).json({ error: 'Full name, email address, and password are required.' });
       return;
     }
 
     const cleanEmail = email.toLowerCase().trim();
     const existing = await User.findOne({ email: cleanEmail }).lean();
     if (existing) {
-      res.status(400).json({ error: 'Email is already registered' });
+      res.status(400).json({ error: 'An account with this email address is already registered. Please sign in.' });
       return;
     }
 
@@ -131,28 +187,34 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Validate strong, unbreached password
+    const pwdValidation = validatePasswordStrength(password);
+    if (!pwdValidation.valid) {
+      res.status(400).json({ error: pwdValidation.reason });
+      return;
+    }
+
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
     // Public registration strictly assigns farmer role; privileged roles must be created by an administrator
     const newUser = await User.create({
-      name,
+      name: name.trim(),
       email: cleanEmail,
       passwordHash,
       role: 'farmer',
-      phone: phone || undefined,
+      phone: phone ? phone.trim() : undefined,
     });
 
-    let farmerProfile = null;
-    farmerProfile = await Farmer.create({
+    const farmerProfile = await Farmer.create({
       userId: newUser._id,
-      fullName: name,
-      phone: phone || 'N/A',
+      fullName: name.trim(),
+      phone: phone ? phone.trim() : '+91-98000-00000',
       email: cleanEmail,
-      state: state || 'Telangana',
-      district: district || 'Warangal',
+      state: state || 'Tamil Nadu',
+      district: district || 'Kanchipuram',
       farmSizeAcres: parseFloat(farmSizeAcres) || 5.0,
-      primaryCrops: primaryCrops || 'Cotton, Chilli',
+      primaryCrops: primaryCrops || 'Rice, Chilli',
     });
 
     const tokenPayload = {
@@ -165,6 +227,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({
+      message: 'Farmer account created successfully with unique credentials!',
       token,
       user: {
         id: newUser._id.toString(),
@@ -175,8 +238,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       }
     });
   } catch (error: any) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Failed to register user' });
+    console.error('Registration error:', error.message);
+    res.status(500).json({ error: 'Failed to register farmer user' });
   }
 };
 
@@ -196,8 +259,9 @@ export const registerAdmin = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    if (password.length < 6) {
-      res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+    const pwdValidation = validatePasswordStrength(password);
+    if (!pwdValidation.valid) {
+      res.status(400).json({ error: pwdValidation.reason });
       return;
     }
 
@@ -226,7 +290,6 @@ export const registerAdmin = async (req: Request, res: Response): Promise<void> 
       }
     }
 
-    // Check if email already registered
     const existing = await User.findOne({ email: cleanEmail }).lean();
     if (existing) {
       res.status(409).json({ error: 'An account with this email address already exists. Please sign in.' });
@@ -245,7 +308,6 @@ export const registerAdmin = async (req: Request, res: Response): Promise<void> 
       avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     });
 
-    // Record audit trail log
     await ActivityLog.create({
       userId: newAdmin._id,
       action: 'ADMIN_REGISTRATION',
@@ -275,8 +337,168 @@ export const registerAdmin = async (req: Request, res: Response): Promise<void> 
       }
     });
   } catch (error: any) {
-    console.error('Error creating admin account:', error);
+    console.error('Error creating admin account:', error.message);
     res.status(500).json({ error: 'Failed to create admin account. Please try again.' });
+  }
+};
+
+// Password Recovery: Initiate reset request
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== 'string') {
+      res.status(400).json({ error: 'Please enter a valid email address.' });
+      return;
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: cleanEmail });
+
+    if (!user) {
+      // Neutral response prevents user enumeration
+      res.json({
+        success: true,
+        message: 'If this email is registered in our platform, a secure password recovery code has been generated.',
+      });
+      return;
+    }
+
+    // Generate cryptographic reset token
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    // Token expires in 1 hour
+    user.resetPasswordToken = tokenHash;
+    user.resetPasswordExpires = new Date(Date.now() + 3600000);
+    await user.save();
+
+    await ActivityLog.create({
+      userId: user._id,
+      action: 'PASSWORD_RESET_REQUESTED',
+      module: 'User Authentication',
+      details: `Password recovery token requested for ${user.email}`,
+    });
+
+    res.json({
+      success: true,
+      message: 'Password recovery verification code generated successfully.',
+      resetToken: rawToken,
+      email: user.email,
+    });
+  } catch (error: any) {
+    console.error('Forgot password error:', error.message);
+    res.status(500).json({ error: 'Failed to process password recovery request.' });
+  }
+};
+
+// Password Recovery: Complete reset with verification token and new unique password
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      res.status(400).json({ error: 'Recovery token and new password are required.' });
+      return;
+    }
+
+    const strengthCheck = validatePasswordStrength(newPassword);
+    if (!strengthCheck.valid) {
+      res.status(400).json({ error: strengthCheck.reason });
+      return;
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token.trim()).digest('hex');
+
+    const user = await User.findOne({
+      resetPasswordToken: tokenHash,
+      resetPasswordExpires: { $gt: new Date() },
+    }).select('+resetPasswordToken +resetPasswordExpires');
+
+    if (!user) {
+      res.status(400).json({
+        error: 'Password recovery token is invalid or has expired. Please initiate a new recovery request.',
+      });
+      return;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    await ActivityLog.create({
+      userId: user._id,
+      action: 'PASSWORD_RESET_COMPLETED',
+      module: 'User Authentication',
+      details: `Password successfully updated through authorized recovery flow for ${user.email}`,
+    });
+
+    res.json({
+      success: true,
+      message: 'Password successfully updated! You can now sign in with your new unique password.',
+    });
+  } catch (error: any) {
+    console.error('Reset password error:', error.message);
+    res.status(500).json({ error: 'Failed to reset password.' });
+  }
+};
+
+// Logged-in user self-service password update
+export const changePassword = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required.' });
+      return;
+    }
+
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ error: 'Current password and new password are required.' });
+      return;
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      res.status(404).json({ error: 'User not found.' });
+      return;
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) {
+      res.status(400).json({ error: 'Current password does not match.' });
+      return;
+    }
+
+    const strengthCheck = validatePasswordStrength(newPassword);
+    if (!strengthCheck.valid) {
+      res.status(400).json({ error: strengthCheck.reason });
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      res.status(400).json({ error: 'New password must be different from your current password.' });
+      return;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    await ActivityLog.create({
+      userId: user._id,
+      action: 'PASSWORD_CHANGED',
+      module: 'User Authentication',
+      details: `Password successfully changed in account settings for ${user.email}`,
+    });
+
+    res.json({
+      success: true,
+      message: 'Password changed successfully.',
+    });
+  } catch (error: any) {
+    console.error('Change password error:', error.message);
+    res.status(500).json({ error: 'Failed to change password.' });
   }
 };
 
@@ -293,6 +515,12 @@ export const createUser = async (req: AuthenticatedRequest, res: Response): Prom
     const existing = await User.findOne({ email: cleanEmail });
     if (existing) {
       res.status(409).json({ error: 'A user with this email address already exists' });
+      return;
+    }
+
+    const pwdValidation = validatePasswordStrength(password);
+    if (!pwdValidation.valid) {
+      res.status(400).json({ error: pwdValidation.reason });
       return;
     }
 
@@ -342,7 +570,7 @@ export const createUser = async (req: AuthenticatedRequest, res: Response): Prom
       createdAt: newUser.createdAt,
     });
   } catch (error: any) {
-    console.error('Error creating user:', error);
+    console.error('Error creating user:', error.message);
     res.status(500).json({ error: 'Failed to create user' });
   }
 };
@@ -363,7 +591,12 @@ export const updateUser = async (req: AuthenticatedRequest, res: Response): Prom
     if (role) user.role = role.toLowerCase();
     if (phone !== undefined) user.phone = phone ? phone.trim() : undefined;
 
-    if (password && password.trim().length >= 6) {
+    if (password && password.trim()) {
+      const pwdValidation = validatePasswordStrength(password.trim());
+      if (!pwdValidation.valid) {
+        res.status(400).json({ error: pwdValidation.reason });
+        return;
+      }
       const salt = await bcrypt.genSalt(10);
       user.passwordHash = await bcrypt.hash(password.trim(), salt);
     }
@@ -389,7 +622,7 @@ export const updateUser = async (req: AuthenticatedRequest, res: Response): Prom
       updatedAt: user.updatedAt,
     });
   } catch (error: any) {
-    console.error('Error updating user:', error);
+    console.error('Error updating user:', error.message);
     res.status(500).json({ error: 'Failed to update user' });
   }
 };
@@ -420,8 +653,7 @@ export const deleteUser = async (req: AuthenticatedRequest, res: Response): Prom
 
     res.json({ message: 'User deleted successfully' });
   } catch (error: any) {
-    console.error('Error deleting user:', error);
+    console.error('Error deleting user:', error.message);
     res.status(500).json({ error: 'Failed to delete user' });
   }
 };
-

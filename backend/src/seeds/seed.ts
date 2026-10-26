@@ -832,18 +832,8 @@ async function seed() {
   console.log('✅ ALL MONGODB DEMO ACCOUNTS AND DATA SEEDED SUCCESSFULLY!');
   console.log('=============================================================');
   console.log('DEMO LOGIN CREDENTIALS:\n');
-  console.log('ADMIN');
-  console.log('admin@agribiotech.demo');
-  console.log('Admin@123\n');
-  console.log('AGRONOMIST');
-  console.log('agronomist@agribiotech.demo');
-  console.log('Agronomist@123\n');
-  console.log('BIOTECH SCIENTIST');
-  console.log('scientist@agribiotech.demo');
-  console.log('Scientist@123\n');
-  console.log('FARMER');
-  console.log('farmer@agribiotech.demo');
-  console.log('Farmer@123');
+  console.log('Registered accounts initialized with secure bcrypt password hashes.');
+  console.log('Users: admin@agribiotech.demo, agronomist@agribiotech.demo, scientist@agribiotech.demo, farmer@agribiotech.demo');
   console.log('=============================================================\n');
 
   await mongoose.disconnect();

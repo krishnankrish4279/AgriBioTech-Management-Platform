@@ -180,6 +180,21 @@ export const api = {
       request<{ token: string; user: User }>('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
     registerAdmin: (body: { name: string; email: string; password: string; phone?: string }) =>
       request<{ message: string; token: string; user: User }>('/auth/register-admin', { method: 'POST', body: JSON.stringify(body) }),
+    forgotPassword: (body: { email: string }) =>
+      request<{ success: boolean; message: string; resetToken?: string; email?: string }>('/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    resetPassword: (body: { token: string; newPassword: string }) =>
+      request<{ success: boolean; message: string }>('/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    changePassword: (body: { currentPassword: string; newPassword: string }) =>
+      request<{ success: boolean; message: string }>('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
     getMe: () => request<User>('/auth/me'),
     getUsers: () => request<User[]>('/users'),
   },

@@ -8,6 +8,8 @@ export interface IUser extends Document {
   role: 'admin' | 'agronomist' | 'biotech_expert' | 'farmer' | 'ADMIN' | 'AGRONOMIST' | 'BIOTECH_EXPERT' | 'FARMER';
   phone?: string;
   avatarUrl?: string;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +28,8 @@ const UserSchema = new Schema<IUser>(
     },
     phone: { type: String, trim: true },
     avatarUrl: { type: String, default: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80' },
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpires: { type: Date, select: false },
   },
   { timestamps: true }
 );

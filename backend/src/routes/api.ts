@@ -29,6 +29,9 @@ router.post('/auth/login', authController.login);
 router.post('/auth/demo-login', authController.demoLogin);
 router.post('/auth/register', authController.register);
 router.post('/auth/register-admin', authController.registerAdmin);
+router.post('/auth/forgot-password', authController.forgotPassword);
+router.post('/auth/reset-password', authController.resetPassword);
+router.post('/auth/change-password', authenticate, authController.changePassword);
 router.get('/auth/me', authenticate, authController.getMe);
 router.get('/auth/users', authenticate, requireRole(['admin']), authController.getUsers);
 
