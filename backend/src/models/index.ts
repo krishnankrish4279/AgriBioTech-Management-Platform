@@ -151,7 +151,7 @@ export interface IDiseaseReport extends Document {
   latitude?: number;
   longitude?: number;
   dateObserved: Date;
-  status: 'ACTIVE' | 'INVESTIGATING' | 'CONTAINED' | 'RESOLVED' | 'REPORTED' | 'active' | 'investigating' | 'contained' | 'resolved' | 'reported';
+  status: 'ACTIVE' | 'INVESTIGATING' | 'CONTAINED' | 'RESOLVED' | 'REPORTED' | 'MONITORING' | 'TREATMENT ONGOING' | 'ESCALATED' | 'Monitoring' | 'Treatment Ongoing' | 'Resolved' | 'Escalated' | 'active' | 'investigating' | 'contained' | 'resolved' | 'reported';
   imageUrl?: string;
   recommendedTreatment?: string;
   resolvedAt?: Date;
@@ -162,6 +162,8 @@ export interface IDiseaseReport extends Document {
   problemType?: string;
   affectedArea?: string;
   assignedAdvisorId?: mongoose.Types.ObjectId;
+  pendingFollowUpReview?: boolean;
+  lastFollowUpDate?: Date;
   isDemo?: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -187,7 +189,12 @@ const DiseaseReportSchema = new Schema<IDiseaseReport>(
     status: {
       type: String,
       required: true,
-      enum: ['ACTIVE', 'INVESTIGATING', 'CONTAINED', 'RESOLVED', 'REPORTED', 'active', 'investigating', 'contained', 'resolved', 'reported'],
+      enum: [
+        'ACTIVE', 'INVESTIGATING', 'CONTAINED', 'RESOLVED', 'REPORTED',
+        'MONITORING', 'TREATMENT ONGOING', 'ESCALATED',
+        'Monitoring', 'Treatment Ongoing', 'Resolved', 'Escalated',
+        'active', 'investigating', 'contained', 'resolved', 'reported', 'monitoring', 'treatment ongoing', 'escalated'
+      ],
       default: 'ACTIVE',
       index: true,
     },
@@ -201,6 +208,8 @@ const DiseaseReportSchema = new Schema<IDiseaseReport>(
     problemType: { type: String, trim: true },
     affectedArea: { type: String, trim: true },
     assignedAdvisorId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
+    pendingFollowUpReview: { type: Boolean, default: false, index: true },
+    lastFollowUpDate: { type: Date },
     isDemo: { type: Boolean, default: false, index: true },
   },
   { timestamps: true }
@@ -435,6 +444,99 @@ const SecurityEventSchema = new Schema<ISecurityEvent>(
   { timestamps: true }
 );
 
+// 13. DISEASE CASE FOLLOW-UP MODEL
+export interface IDiseaseCaseFollowUp extends Document {
+  diseaseCaseId: mongoose.Types.ObjectId;
+  farmId: mongoose.Types.ObjectId;
+  farmerUserId: mongoose.Types.ObjectId;
+  farmerId?: mongoose.Types.ObjectId;
+  crop?: string;
+  treatmentDate: Date;
+  treatmentApplied: string;
+  currentSymptoms: string;
+  pestActivity?: string;
+  currentCondition: 'Improved' | 'Unchanged' | 'Worsened' | 'IMPROVED' | 'UNCHANGED' | 'WORSENED';
+  additionalObservations?: string;
+  photoUrl?: string;
+  status: 'PENDING_REVIEW' | 'REVIEWED';
+  reviewNotes?: string;
+  reviewedById?: mongoose.Types.ObjectId;
+  reviewedAt?: Date;
+  caseStatusAfterReview?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const DiseaseCaseFollowUpSchema = new Schema<IDiseaseCaseFollowUp>(
+  {
+    diseaseCaseId: { type: Schema.Types.ObjectId, ref: 'DiseaseReport', required: true, index: true },
+    farmId: { type: Schema.Types.ObjectId, ref: 'Farm', required: true, index: true },
+    farmerUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    farmerId: { type: Schema.Types.ObjectId, ref: 'Farmer', index: true },
+    crop: { type: String, trim: true },
+    treatmentDate: { type: Date, required: true },
+    treatmentApplied: { type: String, required: true, trim: true },
+    currentSymptoms: { type: String, required: true, trim: true },
+    pestActivity: { type: String, trim: true },
+    currentCondition: {
+      type: String,
+      required: true,
+      enum: ['Improved', 'Unchanged', 'Worsened', 'IMPROVED', 'UNCHANGED', 'WORSENED'],
+      index: true,
+    },
+    additionalObservations: { type: String, trim: true },
+    photoUrl: { type: String },
+    status: {
+      type: String,
+      required: true,
+      enum: ['PENDING_REVIEW', 'REVIEWED'],
+      default: 'PENDING_REVIEW',
+      index: true,
+    },
+    reviewNotes: { type: String },
+    reviewedById: { type: Schema.Types.ObjectId, ref: 'User' },
+    reviewedAt: { type: Date },
+    caseStatusAfterReview: { type: String },
+  },
+  { timestamps: true }
+);
+
+// 14. DISEASE CASE AUDIT LOG MODEL
+export interface IDiseaseCaseAuditLog extends Document {
+  diseaseCaseId: mongoose.Types.ObjectId;
+  action: 'CASE_REPORTED' | 'FOLLOW_UP_SUBMITTED' | 'AGRONOMIST_REVIEW' | 'STATUS_CHANGED';
+  performedById: mongoose.Types.ObjectId;
+  performedByName?: string;
+  performedByRole?: string;
+  previousStatus?: string;
+  newStatus?: string;
+  notes?: string;
+  details?: string;
+  timestamp: Date;
+  createdAt: Date;
+}
+
+const DiseaseCaseAuditLogSchema = new Schema<IDiseaseCaseAuditLog>(
+  {
+    diseaseCaseId: { type: Schema.Types.ObjectId, ref: 'DiseaseReport', required: true, index: true },
+    action: {
+      type: String,
+      required: true,
+      enum: ['CASE_REPORTED', 'FOLLOW_UP_SUBMITTED', 'AGRONOMIST_REVIEW', 'STATUS_CHANGED'],
+      index: true,
+    },
+    performedById: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    performedByName: { type: String, trim: true },
+    performedByRole: { type: String, trim: true },
+    previousStatus: { type: String },
+    newStatus: { type: String },
+    notes: { type: String },
+    details: { type: String },
+    timestamp: { type: Date, default: Date.now, index: true },
+  },
+  { timestamps: true }
+);
+
 // Export Mongoose Models
 export const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
 export const Farmer: Model<IFarmer> = mongoose.models.Farmer || mongoose.model<IFarmer>('Farmer', FarmerSchema);
@@ -448,4 +550,6 @@ export const Notification: Model<INotification> = mongoose.models.Notification |
 export const ActivityLog: Model<IActivityLog> = mongoose.models.ActivityLog || mongoose.model<IActivityLog>('ActivityLog', ActivityLogSchema);
 export const Disease: Model<IDisease> = mongoose.models.Disease || mongoose.model<IDisease>('Disease', DiseaseCatalogSchema);
 export const SecurityEvent: Model<ISecurityEvent> = mongoose.models.SecurityEvent || mongoose.model<ISecurityEvent>('SecurityEvent', SecurityEventSchema);
+export const DiseaseCaseFollowUp: Model<IDiseaseCaseFollowUp> = mongoose.models.DiseaseCaseFollowUp || mongoose.model<IDiseaseCaseFollowUp>('DiseaseCaseFollowUp', DiseaseCaseFollowUpSchema);
+export const DiseaseCaseAuditLog: Model<IDiseaseCaseAuditLog> = mongoose.models.DiseaseCaseAuditLog || mongoose.model<IDiseaseCaseAuditLog>('DiseaseCaseAuditLog', DiseaseCaseAuditLogSchema);
 

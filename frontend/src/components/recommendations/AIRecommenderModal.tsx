@@ -4,6 +4,7 @@ import { api } from '../../api/client';
 import { Farm, CropVariety, DiseaseCase, FieldObservation } from '../../types';
 import { Sparkles, Dna, CheckCircle2, AlertCircle, RefreshCw, AlertTriangle, ShieldCheck } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { useAuth } from '../../context/AuthContext';
 
 interface AIRecommenderModalProps {
   isOpen: boolean;
@@ -81,6 +82,73 @@ export const AIRecommenderModal: React.FC<AIRecommenderModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { isAdmin, isBiotechExpert } = useAuth();
+  const canGenerateAI = isAdmin || isBiotechExpert;
+
+  if (!canGenerateAI) {
+    return (
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#06b6d4' }}>
+            <Sparkles size={20} /> AI Biotechnology Recommendation Synthesizer
+          </div>
+        }
+        maxWidth="600px"
+      >
+        <div style={{ padding: '8px 0', textAlign: 'center' }}>
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: 'rgba(6, 182, 212, 0.12)',
+            border: '1px solid rgba(6, 182, 212, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 16px',
+          }}>
+            <ShieldCheck size={28} color="#06b6d4" />
+          </div>
+
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
+            Expert AI Prescription Generation Restricted
+          </h3>
+
+          <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '20px' }}>
+            The AI Biotechnology Recommendation Synthesizer is an advanced agronomic tool restricted to authorized biotechnology experts and administrators.
+          </p>
+
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 'var(--radius-md)',
+            padding: '14px',
+            textAlign: 'left',
+            fontSize: '0.84rem',
+            color: 'var(--text-secondary)',
+            lineHeight: 1.5,
+            marginBottom: '20px',
+          }}>
+            <div style={{ fontWeight: 600, color: '#fff', marginBottom: '6px' }}>How Recommendations Work for Farmers:</div>
+            <ul style={{ paddingLeft: '18px', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <li>Your assigned agronomists and biotechnology specialists continuously review crop surveillance and field observations.</li>
+              <li>Approved biofertilizer, biocontrol, and biopesticide prescriptions are tailored to your registered farm plots.</li>
+              <li>All prescribed solutions appear directly in your Bio Solutions dashboard where you can review dosages and mark them as applied.</li>
+            </ul>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <button type="button" className="btn btn-primary" onClick={onClose}>
+              Return to Bio Solutions
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
   const [farms, setFarms] = useState<Farm[]>([]);
   const [varieties, setVarieties] = useState<CropVariety[]>([]);
 
@@ -232,6 +300,11 @@ export const AIRecommenderModal: React.FC<AIRecommenderModalProps> = ({
 
     if (hasDatabaseConflict && activeDiseaseIncompatible && !conflictResolved) {
       setError(`Data conflict detected: The disease record "${diseaseSymptom}" does not match the registered crop "${registeredCrop}". Please select a compatible record or confirm before generating recommendations.`);
+      return;
+    }
+
+    if (!canGenerateAI) {
+      setError('AI prescription generation is available to authorized agronomists and biotechnology experts.');
       return;
     }
 
@@ -562,12 +635,18 @@ export const AIRecommenderModal: React.FC<AIRecommenderModalProps> = ({
                 <button
                   type="submit"
                   className="btn btn-biotech"
-                  disabled={generating || isGenerationBlocked}
+                  disabled={generating || isGenerationBlocked || !canGenerateAI}
                   style={{
-                    opacity: isGenerationBlocked ? 0.5 : 1,
-                    cursor: isGenerationBlocked ? 'not-allowed' : 'pointer',
+                    opacity: isGenerationBlocked || !canGenerateAI ? 0.5 : 1,
+                    cursor: isGenerationBlocked || !canGenerateAI ? 'not-allowed' : 'pointer',
                   }}
-                  title={isGenerationBlocked ? 'Resolve data conflict above before generating' : 'Run AI Biotech Inference'}
+                  title={
+                    !canGenerateAI
+                      ? 'AI prescription generation is available to authorized agronomists and biotechnology experts'
+                      : isGenerationBlocked
+                      ? 'Resolve data conflict above before generating'
+                      : 'Run AI Biotech Inference'
+                  }
                 >
                   {generating ? (
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -578,6 +657,11 @@ export const AIRecommenderModal: React.FC<AIRecommenderModalProps> = ({
                   )}
                 </button>
               </div>
+              {!canGenerateAI && (
+                <div style={{ fontSize: '0.82rem', color: '#38bdf8', textAlign: 'right' }}>
+                  ℹ️ AI prescription generation is available to authorized agronomists and biotechnology experts.
+                </div>
+              )}
               {isGenerationBlocked && (
                 <div style={{ fontSize: '0.78rem', color: '#f87171', textAlign: 'right' }}>
                   ⚠️ Please resolve the crop or disease data conflict above before generating recommendations.

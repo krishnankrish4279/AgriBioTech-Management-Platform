@@ -14,7 +14,12 @@ import {
   AnalyticsData,
   UserRole,
   FarmerProblemReportPayload,
-  FarmerProblemReportResponse
+  FarmerProblemReportResponse,
+  DiseaseCaseFollowUp,
+  DiseaseCaseAuditEntry,
+  WeatherObservation,
+  FarmWeatherAdvisory,
+  FarmWeatherSummary,
 } from '../types';
 
 // Verified production backend deployment URL on Vercel
@@ -245,6 +250,18 @@ export const api = {
       request<{ message: string }>(`/diseases/${id}`, { method: 'DELETE' }),
     syncCoordinates: () =>
       request<{ message: string; updatedCount: number; details: any[]; unresolvable: any[] }>('/diseases/sync-coordinates', { method: 'POST' }),
+    submitFollowUp: (id: string, data: any) =>
+      request<{ message: string; followUp: DiseaseCaseFollowUp }>(`/diseases/cases/${id}/follow-ups`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    getFollowUps: (id: string) =>
+      request<{ diseaseCaseId: string; pendingReview: boolean; followUps: DiseaseCaseFollowUp[]; auditLogs: DiseaseCaseAuditEntry[] }>(`/diseases/cases/${id}/follow-ups`),
+    reviewFollowUp: (id: string, data: { followUpId?: string; newStatus: string; reviewNotes: string; reason?: string }) =>
+      request<{ message: string; diseaseCase: DiseaseCase; auditEntry: DiseaseCaseAuditEntry }>(`/diseases/cases/${id}/review`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
   },
 
   // Biotech Recommendations
@@ -341,6 +358,22 @@ export const api = {
   analytics: {
     getKPIs: () => request<DashboardKPIs>('/analytics/kpis'),
     getCharts: () => request<AnalyticsData>('/analytics/charts'),
+  },
+
+  // Live Weather System & Weather Advisories
+  weather: {
+    getCurrent: (lat: number, lng: number, locationName?: string) =>
+      request<WeatherObservation>(`/weather/current${buildQueryString({ lat, lng, locationName })}`),
+    getFarmWeather: (farmId: string) =>
+      request<{ farm: any; weather: WeatherObservation; advisories: FarmWeatherAdvisory[] }>(`/weather/farm/${farmId}`),
+    getFarmsWeather: () =>
+      request<FarmWeatherSummary[]>('/weather/farms'),
+    getAdvisories: () =>
+      request<FarmWeatherAdvisory[]>('/weather/advisories'),
+    syncAdvisories: () =>
+      request<{ message: string; createdCount: number }>('/weather/sync-advisories', { method: 'POST' }),
+    getRadarOverlay: () =>
+      request<{ host: string; radarTime: number; tileUrl: string; colorScheme: number; smooth: number }>('/weather/radar-overlay'),
   },
 
   // Standalone image upload

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
-import { DiseaseCase } from '../types';
+import { DiseaseCase, DiseaseCaseFollowUp } from '../types';
 import { SeverityBadge, StatusBadge } from '../components/common/Badge';
 import { TermHelper } from '../components/common/TermHelper';
 import { useAuth } from '../context/AuthContext';
 import { DiseaseDetailModal } from '../components/disease/DiseaseDetailModal';
+import { FarmerFollowUpModal } from '../components/disease/FarmerFollowUpModal';
+import { AgronomistReviewModal } from '../components/disease/AgronomistReviewModal';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import {
@@ -29,14 +31,20 @@ import {
   Building,
   Info,
   Dna,
+  Clock,
+  History,
+  Stethoscope,
+  Send,
+  MessageSquare,
 } from 'lucide-react';
 import { formatInsectProtection, DISEASE_RESISTANCE_STANDARD_EXPLANATION } from '../utils/traitHelper';
 
 export const DiseaseReportDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAdmin, isAgronomist, isBiotechExpert } = useAuth();
+  const { user, isAdmin, isAgronomist, isBiotechExpert, isFarmer } = useAuth();
   const canEdit = isAdmin || isAgronomist || isBiotechExpert;
+  const canReview = isAdmin || isAgronomist || isBiotechExpert;
 
   const [diseaseCase, setDiseaseCase] = useState<DiseaseCase | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -44,6 +52,9 @@ export const DiseaseReportDetailPage: React.FC = () => {
   const [notFound, setNotFound] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<boolean>(false);
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
+  const [showFollowUpModal, setShowFollowUpModal] = useState<boolean>(false);
+  const [showReviewModal, setShowReviewModal] = useState<boolean>(false);
+  const [selectedFollowUpForReview, setSelectedFollowUpForReview] = useState<DiseaseCaseFollowUp | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<boolean>(false);
   const [statusFeedback, setStatusFeedback] = useState<string | null>(null);
 
@@ -314,7 +325,7 @@ export const DiseaseReportDetailPage: React.FC = () => {
           <ArrowLeft size={16} /> Back to Disease Map
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <button
             onClick={handlePrint}
             className="btn btn-secondary btn-sm"
@@ -323,6 +334,47 @@ export const DiseaseReportDetailPage: React.FC = () => {
           >
             <Printer size={14} /> Print Report
           </button>
+
+          {/* Farmer Follow-Up Action */}
+          <button
+            onClick={() => setShowFollowUpModal(true)}
+            className="btn btn-primary btn-sm"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              border: 'none',
+              boxShadow: '0 2px 10px rgba(16, 185, 129, 0.35)',
+            }}
+            title="Submit field follow-up observation on treatment response"
+          >
+            <Sprout size={15} /> Submit Follow-Up
+          </button>
+
+          {/* Agronomist Review Action */}
+          {canReview && (
+            <button
+              onClick={() => {
+                setSelectedFollowUpForReview(null);
+                setShowReviewModal(true);
+              }}
+              className="btn btn-biotech btn-sm"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+              }}
+              title="Record official agronomic assessment and evidence-based status change"
+            >
+              <Stethoscope size={15} /> Agronomist Review
+            </button>
+          )}
+
           {canEdit && (
             <button
               onClick={() => setShowEditModal(true)}
@@ -380,6 +432,43 @@ export const DiseaseReportDetailPage: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
               <SeverityBadge severity={diseaseCase.severity} />
               <StatusBadge status={diseaseCase.status} />
+              {diseaseCase.pendingFollowUpReview && (
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    background: 'rgba(245, 158, 11, 0.2)',
+                    color: '#fbbf24',
+                    border: '1px solid rgba(245, 158, 11, 0.45)',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    animation: 'pulse 2s infinite',
+                  }}
+                >
+                  <Clock size={12} /> Pending Agronomist Review
+                </span>
+              )}
+              {diseaseCase.resolvedAt && (
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    color: '#34d399',
+                    border: '1px solid rgba(16, 185, 129, 0.35)',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <CheckCircle2 size={12} /> Resolved on {new Date(diseaseCase.resolvedAt).toLocaleDateString()}
+                </span>
+              )}
               {diseaseCase.isDemo ? (
                 <span
                   style={{
@@ -911,12 +1000,356 @@ export const DiseaseReportDetailPage: React.FC = () => {
         </div>
       </div>
 
+      {/* MODULE 1: Follow-Up Reports & Case Progression History */}
+      <div className="card-glass" style={{ padding: '24px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '8px',
+                background: 'rgba(56, 189, 248, 0.15)',
+                color: '#38bdf8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <History size={20} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff' }}>
+                Farmer Follow-Up Submissions & Agronomist Reviews ({diseaseCase.followUps?.length || 0})
+              </h2>
+              <span style={{ fontSize: '0.76rem', color: 'var(--text-dim)' }}>
+                Field treatment observations, symptom progressions, and certified expert review evaluations
+              </span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowFollowUpModal(true)}
+            className="btn btn-primary btn-sm"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              border: 'none',
+            }}
+          >
+            <Sprout size={14} /> Submit New Follow-Up
+          </button>
+        </div>
+
+        {diseaseCase.followUps && diseaseCase.followUps.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {diseaseCase.followUps.map((fu, idx) => {
+              const conditionColor =
+                fu.currentCondition === 'Improved'
+                  ? '#34d399'
+                  : fu.currentCondition === 'Worsened'
+                  ? '#f87171'
+                  : '#fbbf24';
+              const conditionBg =
+                fu.currentCondition === 'Improved'
+                  ? 'rgba(16, 185, 129, 0.15)'
+                  : fu.currentCondition === 'Worsened'
+                  ? 'rgba(239, 68, 68, 0.15)'
+                  : 'rgba(245, 158, 11, 0.15)';
+
+              return (
+                <div
+                  key={fu.id || idx}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-md, 10px)',
+                    padding: '18px',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span
+                        style={{
+                          background: conditionBg,
+                          color: conditionColor,
+                          border: `1px solid ${conditionColor}40`,
+                          borderRadius: '6px',
+                          padding: '3px 10px',
+                          fontSize: '0.78rem',
+                          fontWeight: 800,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                        }}
+                      >
+                        {fu.currentCondition === 'Improved' ? '🌿' : fu.currentCondition === 'Worsened' ? '⚠️' : '⚖️'} Condition: {fu.currentCondition}
+                      </span>
+                      <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                        Treatment Date: <strong style={{ color: '#fff' }}>{new Date(fu.treatmentDate).toLocaleDateString()}</strong>
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {fu.status === 'REVIEWED' ? (
+                        <span
+                          style={{
+                            background: 'rgba(16, 185, 129, 0.12)',
+                            color: '#34d399',
+                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                            borderRadius: '4px',
+                            padding: '2px 8px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                          }}
+                        >
+                          ✓ Reviewed by Agronomist
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            background: 'rgba(245, 158, 11, 0.15)',
+                            color: '#fbbf24',
+                            border: '1px solid rgba(245, 158, 11, 0.35)',
+                            borderRadius: '4px',
+                            padding: '2px 8px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                          }}
+                        >
+                          ⏳ Pending Review
+                        </span>
+                      )}
+
+                      {canReview && fu.status !== 'REVIEWED' && (
+                        <button
+                          onClick={() => {
+                            setSelectedFollowUpForReview(fu);
+                            setShowReviewModal(true);
+                          }}
+                          className="btn btn-biotech btn-sm"
+                          style={{ padding: '3px 9px', fontSize: '0.74rem', fontWeight: 700 }}
+                        >
+                          Review Now
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px', fontSize: '0.84rem', marginBottom: '12px' }}>
+                    <div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>
+                        Intervention Applied
+                      </div>
+                      <div style={{ color: '#38bdf8', fontWeight: 600 }}>
+                        {fu.treatmentApplied}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>
+                        Reported Symptoms
+                      </div>
+                      <div style={{ color: '#e2e8f0' }}>
+                        {fu.currentSymptoms}
+                      </div>
+                    </div>
+
+                    {fu.pestActivity && (
+                      <div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>
+                          Pest / Vector Activity
+                        </div>
+                        <div style={{ color: '#f59e0b' }}>
+                          {fu.pestActivity}
+                        </div>
+                      </div>
+                    )}
+
+                    {fu.additionalObservations && (
+                      <div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>
+                          Additional Observations
+                        </div>
+                        <div style={{ color: 'var(--text-muted)' }}>
+                          {fu.additionalObservations}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Photo attachment if available */}
+                  {fu.photoUrl && (
+                    <div style={{ marginTop: '10px', marginBottom: '10px' }}>
+                      <img
+                        src={fu.photoUrl}
+                        alt="Follow-up field photo"
+                        style={{ maxHeight: '140px', borderRadius: '6px', border: '1px solid var(--border-subtle)', objectFit: 'cover' }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Agronomist Review Feedback */}
+                  {fu.reviewNotes && (
+                    <div
+                      style={{
+                        background: 'rgba(56, 189, 248, 0.06)',
+                        border: '1px solid rgba(56, 189, 248, 0.25)',
+                        borderRadius: '8px',
+                        padding: '12px',
+                        marginTop: '10px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <div style={{ fontSize: '0.76rem', fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <Stethoscope size={13} /> Agronomist Evaluation ({fu.reviewerName || 'Field Agronomist'})
+                        </div>
+                        {fu.reviewedAt && (
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
+                            {new Date(fu.reviewedAt).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.84rem', color: '#e2e8f0', lineHeight: 1.45 }}>
+                        {fu.reviewNotes}
+                      </div>
+                      {fu.caseStatusAfterReview && (
+                        <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '4px' }}>
+                          Decision: Official status updated to <strong style={{ color: '#fff' }}>{fu.caseStatusAfterReview}</strong>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: '24px',
+              textAlign: 'center',
+              background: 'rgba(255, 255, 255, 0.02)',
+              borderRadius: '8px',
+              border: '1px dashed var(--border-subtle)',
+              color: 'var(--text-muted)',
+              fontSize: '0.86rem',
+            }}
+          >
+            No follow-up reports submitted yet. If you have applied treatment, please submit a follow-up report to inform the agronomist.
+          </div>
+        )}
+      </div>
+
+      {/* Case Audit Trail Section */}
+      {diseaseCase.auditTrail && diseaseCase.auditTrail.length > 0 && (
+        <div className="card-glass" style={{ padding: '24px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '8px',
+                background: 'rgba(139, 92, 246, 0.15)',
+                color: '#a78bfa',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <FileCheck size={20} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff' }}>
+                Surveillance Audit Trail & Decision History
+              </h2>
+              <span style={{ fontSize: '0.76rem', color: 'var(--text-dim)' }}>
+                Immutable historical record of all case actions, reviews, and status changes
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {diseaseCase.auditTrail.map((entry, idx) => (
+              <div
+                key={entry.id || idx}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                  borderRadius: '6px',
+                  padding: '10px 14px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                  fontSize: '0.8rem',
+                }}
+              >
+                <div>
+                  <span style={{ fontWeight: 700, color: '#fff', marginRight: '8px' }}>
+                    {entry.action.replace(/_/g, ' ')}
+                  </span>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    by <strong style={{ color: '#38bdf8' }}>{entry.performedByName || 'Staff'}</strong> ({entry.performedByRole || 'User'})
+                  </span>
+                  {entry.notes && (
+                    <div style={{ color: '#cbd5e1', fontSize: '0.78rem', marginTop: '2px' }}>
+                      {entry.notes}
+                    </div>
+                  )}
+                  {entry.details && (
+                    <div style={{ color: '#94a3b8', fontSize: '0.72rem', marginTop: '2px' }}>
+                      {entry.details}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ textAlign: 'right', fontSize: '0.74rem', color: 'var(--text-dim)' }}>
+                  {new Date(entry.timestamp).toLocaleString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Edit Modal */}
       <DiseaseDetailModal
         diseaseCase={diseaseCase}
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         onUpdated={fetchReport}
+      />
+
+      {/* Farmer Follow-Up Submission Modal */}
+      <FarmerFollowUpModal
+        diseaseCase={diseaseCase}
+        isOpen={showFollowUpModal}
+        onClose={() => setShowFollowUpModal(false)}
+        onSubmitted={() => {
+          fetchReport();
+          setStatusFeedback('Follow-up report submitted successfully and queued for agronomist review.');
+          setTimeout(() => setStatusFeedback(null), 4000);
+        }}
+      />
+
+      {/* Agronomist Review & Evidence Decision Modal */}
+      <AgronomistReviewModal
+        diseaseCase={diseaseCase}
+        selectedFollowUp={selectedFollowUpForReview}
+        isOpen={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        onReviewed={() => {
+          fetchReport();
+          setStatusFeedback('Official case status and review assessment recorded successfully.');
+          setTimeout(() => setStatusFeedback(null), 4000);
+        }}
       />
     </div>
   );

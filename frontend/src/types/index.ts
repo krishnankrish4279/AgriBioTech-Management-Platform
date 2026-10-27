@@ -117,14 +117,141 @@ export interface DiseaseCase {
   lat?: number;
   lng?: number;
   dateObserved: string;
-  status: 'ACTIVE' | 'INVESTIGATING' | 'CONTAINED' | 'RESOLVED' | 'REPORTED';
+  status: 'ACTIVE' | 'INVESTIGATING' | 'CONTAINED' | 'RESOLVED' | 'REPORTED' | 'MONITORING' | 'TREATMENT ONGOING' | 'ESCALATED' | 'Monitoring' | 'Treatment Ongoing' | 'Resolved' | 'Escalated' | string;
   imageUrl?: string;
   recommendedTreatment?: string;
   resolvedAt?: string;
   recommendations?: BiotechRecommendation[];
+  pendingFollowUpReview?: boolean;
+  lastFollowUpDate?: string;
+  followUps?: DiseaseCaseFollowUp[];
+  auditTrail?: DiseaseCaseAuditEntry[];
   isDemo?: boolean;
   distanceKm?: number;
   createdAt?: string;
+}
+
+export interface DiseaseCaseFollowUp {
+  id: string;
+  diseaseCaseId: string;
+  farmId: string;
+  farmerUserId?: string;
+  farmerName?: string;
+  crop?: string;
+  treatmentDate: string;
+  treatmentApplied: string;
+  currentSymptoms: string;
+  pestActivity?: string;
+  currentCondition: 'Improved' | 'Unchanged' | 'Worsened';
+  additionalObservations?: string;
+  photoUrl?: string;
+  status: 'PENDING_REVIEW' | 'REVIEWED';
+  reviewNotes?: string;
+  reviewedById?: string;
+  reviewerName?: string;
+  reviewerRole?: string;
+  reviewedAt?: string;
+  caseStatusAfterReview?: string;
+  createdAt?: string;
+}
+
+export interface DiseaseCaseAuditEntry {
+  id: string;
+  action: string;
+  performedById?: string;
+  performedByName?: string;
+  performedByRole?: string;
+  previousStatus?: string;
+  newStatus?: string;
+  notes?: string;
+  details?: string;
+  timestamp: string;
+}
+
+export interface WeatherObservation {
+  latitude: number;
+  longitude: number;
+  locationName?: string;
+  farmId?: string;
+  current: {
+    temperature: number;
+    apparentTemperature?: number;
+    relativeHumidity: number;
+    precipitation: number;
+    rain: number;
+    weatherCode: number;
+    conditionText: string;
+    windSpeed: number;
+    windDirection?: number;
+    observationTime: string;
+    measurementPeriod: string;
+  };
+  hourly: Array<{
+    time: string;
+    temperature: number;
+    relativeHumidity: number;
+    precipitationProbability: number;
+    precipitation: number;
+    weatherCode: number;
+    conditionText: string;
+    windSpeed: number;
+  }>;
+  daily: Array<{
+    date: string;
+    weatherCode: number;
+    conditionText: string;
+    tempMax: number;
+    tempMin: number;
+    precipitationSum: number;
+    precipitationProbabilityMax: number;
+    windSpeedMax: number;
+  }>;
+  source: string;
+  lastUpdated: string;
+  isCached: boolean;
+  isStale?: boolean;
+}
+
+export interface FarmWeatherAdvisory {
+  farmId: string;
+  farmName: string;
+  crop?: string;
+  locationAddress?: string;
+  latitude: number;
+  longitude: number;
+  title: string;
+  category: 'WEATHER_ACTION';
+  alertType: 'HEAVY_RAIN' | 'HIGH_RAIN_PROBABILITY' | 'HIGH_HUMIDITY_DISEASE_RISK' | 'DRY_SPELL_DROUGHT_RISK' | 'HIGH_WIND_WARNING';
+  priority: 'ROUTINE' | 'IMPORTANT' | 'URGENT';
+  condition: string;
+  measurement: string;
+  timeWindow: string;
+  advice: string;
+  source: string;
+  issuedAt: string;
+  expiresAt?: string;
+}
+
+export interface FarmWeatherSummary {
+  farmId: string;
+  farmName: string;
+  currentCrop?: string;
+  locationAddress?: string;
+  latitude: number;
+  longitude: number;
+  weather: {
+    temperature: number;
+    apparentTemperature?: number;
+    relativeHumidity: number;
+    precipitation: number;
+    conditionText: string;
+    weatherCode: number;
+    windSpeed: number;
+    measurementPeriod: string;
+    lastUpdated: string;
+  } | null;
+  advisories: FarmWeatherAdvisory[];
+  error?: string;
 }
 
 export interface FarmerProblemReportPayload {

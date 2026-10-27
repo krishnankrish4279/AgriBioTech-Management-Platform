@@ -25,6 +25,7 @@ export const RecommendationsPage: React.FC = () => {
 
   const { isBiotechExpert, isAdmin } = useAuth();
   const canPrescribe = isBiotechExpert || isAdmin;
+  const canGenerateAI = isBiotechExpert || isAdmin;
 
   // Load farms on mount
   useEffect(() => {
@@ -245,13 +246,32 @@ export const RecommendationsPage: React.FC = () => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            onClick={() => setShowAIModal(true)}
-            className="btn btn-biotech"
-          >
-            <Sparkles size={16} /> Run AI Recommender
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {canGenerateAI ? (
+            <button
+              onClick={() => setShowAIModal(true)}
+              className="btn btn-biotech"
+            >
+              <Sparkles size={16} /> Run AI Recommender
+            </button>
+          ) : (
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'rgba(6, 182, 212, 0.08)',
+                border: '1px solid rgba(6, 182, 212, 0.22)',
+                padding: '6px 12px',
+                borderRadius: 'var(--radius-md, 8px)',
+                fontSize: '0.82rem',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              <Sparkles size={14} color="#06b6d4" />
+              <span>AI prescription generation is restricted to authorized biotechnology experts.</span>
+            </div>
+          )}
           {canPrescribe && (
             <button
               onClick={() => setShowCreateModal(true)}
@@ -260,7 +280,7 @@ export const RecommendationsPage: React.FC = () => {
               <Plus size={16} /> Prescribe Expert Protocol
             </button>
           )}
-          <button onClick={loadRecommendations} className="btn btn-secondary">
+          <button onClick={loadRecommendations} className="btn btn-secondary" title="Refresh Recommendations">
             <RefreshCw size={16} />
           </button>
         </div>
@@ -394,24 +414,57 @@ export const RecommendationsPage: React.FC = () => {
           Loading biotechnology recommendations...
         </div>
       ) : filteredRecommendations.length === 0 ? (
-        <div className="card-glass" style={{ textAlign: 'center', padding: '50px' }}>
-          <Beaker size={44} color="#06b6d4" style={{ margin: '0 auto 10px' }} />
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>No Recommendations Found</h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-            {farmFilter !== 'ALL'
-              ? `No specific biotechnology recommendations exist yet for ${selectedFarmObj?.farmName || 'this farm'}. Click below to run AI synthesis.`
-              : 'No recommendations matched your current filters. Click below to generate tailored AI suggestions.'}
+        <div className="card-glass" style={{ textAlign: 'center', padding: '48px 24px', maxWidth: '640px', margin: '0 auto' }}>
+          <Beaker size={44} color="#06b6d4" style={{ margin: '0 auto 12px' }} />
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
+            {canGenerateAI ? 'No Recommendations Found' : 'No Recommendations Available'}
+          </h3>
+          <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: 1.5 }}>
+            {canGenerateAI
+              ? (farmFilter !== 'ALL'
+                  ? `No specific biotechnology recommendations exist yet for ${selectedFarmObj?.farmName || 'this farm'}. Click below to run AI synthesis.`
+                  : 'No recommendations matched your current filters. Click below to generate tailored AI suggestions.')
+              : (farmFilter !== 'ALL'
+                  ? `No biotechnology recommendations are currently prescribed for ${selectedFarmObj?.farmName || 'this farm'}. Your assigned agronomist and biotechnology experts evaluate field observations and prescribe biological solutions.`
+                  : 'No biotechnology recommendations are currently available for your authorized farms and crops. Once an agronomist or biotechnology expert prescribes a protocol, it will be listed here.')}
           </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-            <button onClick={() => setShowAIModal(true)} className="btn btn-biotech">
-              <Sparkles size={16} /> Run AI Inference
-            </button>
-            {isAnyFilterActive && (
-              <button onClick={handleClearFilters} className="btn btn-secondary">
-                View All Recommendations
+
+          {canGenerateAI ? (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+              <button onClick={() => setShowAIModal(true)} className="btn btn-biotech">
+                <Sparkles size={16} /> Run AI Inference
               </button>
-            )}
-          </div>
+              {isAnyFilterActive && (
+                <button onClick={handleClearFilters} className="btn btn-secondary">
+                  Reset Filters
+                </button>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+              <div
+                style={{
+                  background: 'rgba(6, 182, 212, 0.08)',
+                  border: '1px solid rgba(6, 182, 212, 0.22)',
+                  borderRadius: 'var(--radius-md, 8px)',
+                  padding: '8px 14px',
+                  fontSize: '0.82rem',
+                  color: '#67e8f9',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <Sparkles size={14} color="#06b6d4" style={{ flexShrink: 0 }} />
+                <span>Expert AI prescription generation is restricted to authorized biotechnology experts.</span>
+              </div>
+              {isAnyFilterActive && (
+                <button onClick={handleClearFilters} className="btn btn-secondary">
+                  <X size={14} /> Reset Filters
+                </button>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div
@@ -441,16 +494,20 @@ export const RecommendationsPage: React.FC = () => {
         onStatusChange={handleStatusChange}
         onDelete={handleDelete}
       />
-      <CreateRecommendationModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSuccess={loadRecommendations}
-      />
-      <AIRecommenderModal
-        isOpen={showAIModal}
-        onClose={() => setShowAIModal(false)}
-        onSuccess={loadRecommendations}
-      />
+      {canPrescribe && (
+        <CreateRecommendationModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={loadRecommendations}
+        />
+      )}
+      {canGenerateAI && (
+        <AIRecommenderModal
+          isOpen={showAIModal}
+          onClose={() => setShowAIModal(false)}
+          onSuccess={loadRecommendations}
+        />
+      )}
     </div>
   );
 };

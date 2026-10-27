@@ -11,6 +11,7 @@ import * as farmerController from '../controllers/farmerController';
 import * as advisoryController from '../controllers/advisoryController';
 import * as notificationController from '../controllers/notificationController';
 import * as analyticsController from '../controllers/analyticsController';
+import * as weatherController from '../controllers/weatherController';
 
 const router = Router();
 
@@ -74,13 +75,31 @@ router.delete('/diseases/cases/:id', authenticate, requireRole(['admin', 'agrono
 router.delete('/diseases/:id', authenticate, requireRole(['admin', 'agronomist']), diseaseController.deleteDiseaseCase);
 router.post('/diseases/sync-coordinates', optionalAuth, diseaseController.syncDiseaseCoordinates);
 
-// Biotechnology Recommendations (CRUD)
+// Disease Surveillance Follow-Up Workflow & Agronomist Review
+router.post('/diseases/cases/:id/follow-ups', authenticate, upload.single('image'), diseaseController.submitCaseFollowUp);
+router.post('/diseases/:id/follow-ups', authenticate, upload.single('image'), diseaseController.submitCaseFollowUp);
+router.get('/diseases/cases/:id/follow-ups', optionalAuth, diseaseController.getCaseFollowUps);
+router.get('/diseases/:id/follow-ups', optionalAuth, diseaseController.getCaseFollowUps);
+router.post('/diseases/cases/:id/review', authenticate, requireRole(['admin', 'agronomist', 'biotech_expert']), diseaseController.reviewCaseFollowUp);
+router.post('/diseases/:id/review', authenticate, requireRole(['admin', 'agronomist', 'biotech_expert']), diseaseController.reviewCaseFollowUp);
+router.post('/diseases/cases/:id/follow-ups/:followUpId/review', authenticate, requireRole(['admin', 'agronomist', 'biotech_expert']), diseaseController.reviewCaseFollowUp);
+router.post('/diseases/:id/follow-ups/:followUpId/review', authenticate, requireRole(['admin', 'agronomist', 'biotech_expert']), diseaseController.reviewCaseFollowUp);
+
+// Biotechnology Recommendations (CRUD) - Expert AI & Prescriptions restricted to admin and biotech_expert
 router.get('/recommendations', optionalAuth, recommendationController.getRecommendations);
 router.get('/recommendations/:id', optionalAuth, recommendationController.getRecommendationById);
 router.post('/recommendations', authenticate, requireRole(['admin', 'biotech_expert']), recommendationController.createRecommendation);
 router.post('/recommendations/generate-ai', authenticate, requireRole(['admin', 'biotech_expert']), recommendationController.generateAIRecommendations);
 router.put('/recommendations/:id', authenticate, requireRole(['admin', 'biotech_expert', 'agronomist', 'farmer']), recommendationController.updateRecommendation);
 router.delete('/recommendations/:id', authenticate, requireRole(['admin', 'biotech_expert']), recommendationController.deleteRecommendation);
+
+// Live Weather System with Map Integration & Farmer Weather Advisories
+router.get('/weather/current', optionalAuth, weatherController.getCurrentWeather);
+router.get('/weather/farm/:id', optionalAuth, weatherController.getFarmWeather);
+router.get('/weather/farms', optionalAuth, weatherController.getRegisteredFarmsWeather);
+router.get('/weather/advisories', optionalAuth, weatherController.getWeatherAdvisories);
+router.post('/weather/sync-advisories', optionalAuth, weatherController.syncWeatherAdvisoriesToDB);
+router.get('/weather/radar-overlay', optionalAuth, weatherController.getRadarOverlayMeta);
 
 // Field Observations (CRUD)
 router.get('/observations', optionalAuth, observationController.getObservations);

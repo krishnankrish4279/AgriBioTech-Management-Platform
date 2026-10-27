@@ -29,8 +29,16 @@ import {
   Save,
   Clock,
   Plus,
+  CloudRain,
+  Sun,
+  CloudLightning,
+  Droplets,
+  Thermometer,
+  Wind,
 } from 'lucide-react';
 import { api } from '../../api/client';
+import { WeatherObservation, FarmWeatherSummary, FarmWeatherAdvisory } from '../../types';
+import { WeatherDetailsPanel, getWeatherEmoji } from '../weather/WeatherDetailsPanel';
 
 export interface MappableDiseaseCase extends DiseaseCase {
   normalizedLat: number;
@@ -256,6 +264,77 @@ export const DiseaseMap: React.FC<DiseaseMapProps> = ({
   // Target coordinates to focus map
   const [focusTarget, setFocusTarget] = useState<[number, number] | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+
+  // Weather Layer States
+  const [showDiseaseLayer, setShowDiseaseLayer] = useState<boolean>(true);
+  const [showWeatherLayer, setShowWeatherLayer] = useState<boolean>(true);
+  const [showWeatherPanel, setShowWeatherPanel] = useState<boolean>(false);
+  const [radarTileUrl, setRadarTileUrl] = useState<string | null>(null);
+  const [registeredFarmsWeather, setRegisteredFarmsWeather] = useState<FarmWeatherSummary[]>([]);
+  const [activeWeatherObservation, setActiveWeatherObservation] = useState<WeatherObservation | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState<boolean>(false);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
+  const [weatherAdvisories, setWeatherAdvisories] = useState<FarmWeatherAdvisory[]>([]);
+  const [selectedWeatherLocationId, setSelectedWeatherLocationId] = useState<string>('');
+
+  const loadWeatherRadar = async () => {
+    try {
+      const meta = await api.weather.getRadarOverlay();
+      if (meta?.tileUrl) {
+        setRadarTileUrl(meta.tileUrl);
+      }
+    } catch (e) {
+      console.warn('Weather radar overlay unavailable:', e);
+    }
+  };
+
+  const loadRegisteredFarmsWeather = async () => {
+    try {
+      const data = await api.weather.getFarmsWeather();
+      setRegisteredFarmsWeather(data);
+    } catch (e) {
+      console.warn('Registered farms weather unavailable:', e);
+    }
+  };
+
+  const loadWeatherAdvisories = async () => {
+    try {
+      const data = await api.weather.getAdvisories();
+      setWeatherAdvisories(data);
+    } catch (e) {
+      console.warn('Weather advisories unavailable:', e);
+    }
+  };
+
+  const loadWeatherForLocation = async (lat: number, lng: number, locName: string, farmId?: string) => {
+    setWeatherLoading(true);
+    setWeatherError(null);
+    try {
+      if (farmId) {
+        const obs = await api.weather.getFarmWeather(farmId);
+        setActiveWeatherObservation(obs.weather);
+      } else {
+        const obs = await api.weather.getCurrent(lat, lng, locName);
+        setActiveWeatherObservation(obs);
+      }
+    } catch (e: any) {
+      setWeatherError(e.message || 'Failed to fetch weather observation');
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadWeatherRadar();
+    loadRegisteredFarmsWeather();
+    loadWeatherAdvisories();
+  }, []);
+
+  useEffect(() => {
+    if (userLocation) {
+      loadWeatherForLocation(userLocation.lat, userLocation.lng, 'Your Location');
+    }
+  }, [userLocation]);
 
   // Default Center: Chennai, Tamil Nadu, India
   const defaultPosition: [number, number] = [13.0827, 80.2707];
@@ -637,6 +716,40 @@ export const DiseaseMap: React.FC<DiseaseMapProps> = ({
     });
   };
 
+  // Weather marker icon: clean pill badge displaying weather emoji and live temperature in °C
+  const createFarmWeatherIcon = (summary: FarmWeatherSummary) => {
+    const temp = summary.weather?.temperature != null ? summary.weather.temperature : '--';
+    const icon = summary.weather ? getWeatherEmoji(summary.weather.weatherCode) : '⛅';
+    const rainfall = summary.weather?.precipitation || 0;
+    const isRain = rainfall > 0;
+
+    return L.divIcon({
+      className: 'custom-leaflet-marker-weather',
+      html: `
+        <div style="
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          background: rgba(13, 24, 41, 0.94);
+          border: 1.5px solid ${isRain ? '#38bdf8' : '#34d399'};
+          border-radius: 9999px;
+          padding: 2px 7px;
+          box-shadow: 0 4px 14px rgba(0,0,0,0.6);
+          cursor: pointer;
+          white-space: nowrap;
+          transform: translate(-50%, -50%);
+        ">
+          <span style="font-size: 13px;">${icon}</span>
+          <span style="color: #ffffff; font-weight: 800; font-size: 11px;">${temp}°C</span>
+        </div>
+      `,
+      iconSize: [60, 24],
+      iconAnchor: [30, 12],
+      popupAnchor: [0, -14],
+    });
+  };
+
   // Severity & status marker styling (CRITICAL: red, HIGH: orange, MEDIUM: yellow, LOW: green, RESOLVED: calm checkmark)
   const createCustomIcon = (severity: string, status?: string) => {
     const isResolved = (status || '').toUpperCase() === 'RESOLVED';
@@ -809,8 +922,72 @@ export const DiseaseMap: React.FC<DiseaseMapProps> = ({
           </div>
         </div>
 
-        {/* Right side controls: Location & Filter Pills */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        {/* Right side controls: Layer Toggles, Location & Filter Pills */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {/* Layer Visibility Toggles */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(255,255,255,0.04)', padding: '3px 6px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+            <button
+              type="button"
+              onClick={() => setShowDiseaseLayer(!showDiseaseLayer)}
+              style={{
+                background: showDiseaseLayer ? 'rgba(16, 185, 129, 0.25)' : 'transparent',
+                color: showDiseaseLayer ? '#34d399' : 'var(--text-muted)',
+                border: showDiseaseLayer ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid transparent',
+                borderRadius: '6px',
+                padding: '4px 8px',
+                fontSize: '0.73rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+              title="Toggle Disease Surveillance Outbreak Layer"
+            >
+              <ShieldAlert size={13} /> Disease Radar {showDiseaseLayer ? 'ON' : 'OFF'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowWeatherLayer(!showWeatherLayer)}
+              style={{
+                background: showWeatherLayer ? 'rgba(56, 189, 248, 0.25)' : 'transparent',
+                color: showWeatherLayer ? '#38bdf8' : 'var(--text-muted)',
+                border: showWeatherLayer ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
+                borderRadius: '6px',
+                padding: '4px 8px',
+                fontSize: '0.73rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+              title="Toggle Live Weather Radar & Observations Layer"
+            >
+              <CloudRain size={13} /> Weather {showWeatherLayer ? 'ON' : 'OFF'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowWeatherPanel(!showWeatherPanel)}
+              style={{
+                background: showWeatherPanel ? 'rgba(6, 182, 212, 0.25)' : 'transparent',
+                color: showWeatherPanel ? '#22d3ee' : 'var(--text-muted)',
+                border: showWeatherPanel ? '1px solid rgba(6, 182, 212, 0.4)' : '1px solid transparent',
+                borderRadius: '6px',
+                padding: '4px 8px',
+                fontSize: '0.73rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+              title="Toggle Weather Forecast & Meteorological Panel"
+            >
+              <Thermometer size={13} /> Forecast
+            </button>
+          </div>
+
           {/* Location Actions: Enable or Refresh */}
           {!userLocation ? (
             <button
@@ -1041,6 +1218,16 @@ export const DiseaseMap: React.FC<DiseaseMapProps> = ({
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
+          {/* Live Weather Radar Overlay (RainViewer) */}
+          {showWeatherLayer && radarTileUrl && (
+            <TileLayer
+              attribution='&copy; <a href="https://www.rainviewer.com/" target="_blank" rel="noreferrer">RainViewer</a> Radar'
+              url={radarTileUrl}
+              opacity={0.6}
+              zIndex={300}
+            />
+          )}
+
           {/* Controller to auto-fit disease markers or default */}
           <MapBoundsController
             markers={displayedCases}
@@ -1140,8 +1327,67 @@ export const DiseaseMap: React.FC<DiseaseMapProps> = ({
             </>
           )}
 
-          {/* Disease Outbreak Markers (Deduplicated and strictly within radiusKm when location active) */}
-          {displayedCases.map((c) => {
+          {/* Registered Farms Weather Markers */}
+          {showWeatherLayer && registeredFarmsWeather.map((summary) => (
+            <Marker
+              key={`weather-farm-${summary.farmId}`}
+              position={[summary.latitude, summary.longitude]}
+              icon={createFarmWeatherIcon(summary)}
+            >
+              <Popup>
+                <div style={{ minWidth: '220px', fontFamily: 'var(--font-sans)', color: '#0f172a', fontSize: '0.82rem', lineHeight: 1.45 }}>
+                  <div style={{ fontWeight: 800, fontSize: '0.96rem', color: '#0284c7', marginBottom: '4px' }}>
+                    🏡 {summary.farmName}
+                  </div>
+                  <div style={{ fontSize: '0.76rem', color: '#64748b', marginBottom: '8px' }}>
+                    Crop: <strong>{summary.currentCrop || 'Field Crop'}</strong>
+                  </div>
+                  <div style={{ background: '#f0f9ff', padding: '8px', borderRadius: '6px', border: '1px solid #bae6fd', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span>Condition:</span>
+                      <strong>{summary.weather?.conditionText || 'Clear'}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span>Temperature:</span>
+                      <strong>{summary.weather?.temperature != null ? `${summary.weather.temperature}°C` : 'N/A'}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span>Humidity:</span>
+                      <strong>{summary.weather?.relativeHumidity != null ? `${summary.weather.relativeHumidity}%` : 'N/A'}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Rainfall:</span>
+                      <strong>{summary.weather?.precipitation != null ? `${summary.weather.precipitation} mm` : '0 mm'}</strong>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedWeatherLocationId(summary.farmId);
+                      loadWeatherForLocation(summary.latitude, summary.longitude, summary.farmName, summary.farmId);
+                      setShowWeatherPanel(true);
+                    }}
+                    style={{
+                      width: '100%',
+                      background: '#0284c7',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '6px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    📊 View Detailed Weather & Forecast
+                  </button>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+
+          {/* Disease Outbreak Markers (Rendered when Disease Layer is active) */}
+          {showDiseaseLayer && displayedCases.map((c) => {
             const isCritical = (c.severity || '').toUpperCase() === 'CRITICAL' && (c.status || '').toUpperCase() !== 'RESOLVED';
             const farmName =
               c.farm?.farmName ||
@@ -1449,7 +1695,7 @@ export const DiseaseMap: React.FC<DiseaseMapProps> = ({
         )}
 
         {/* Empty State Overlay */}
-        {!loading && !error && displayedCases.length === 0 && (
+        {!loading && !error && showDiseaseLayer && displayedCases.length === 0 && (
           <div
             style={{
               position: 'absolute',
@@ -1480,7 +1726,7 @@ export const DiseaseMap: React.FC<DiseaseMapProps> = ({
             </div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4, marginBottom: (cases.length > 0 && mappableCases.length === 0) || (cases.length === 0 && onOpenReportModal) ? '14px' : '0' }}>
               {userLocation
-                ? `No pathogen outbreaks detected in MongoDB within ${radiusKm} km of your GPS location. Distant records elsewhere in the state are excluded.`
+                ? `Disease surveillance only: No active pathogen outbreaks detected in MongoDB within ${radiusKm} km. (Meteorological observations and rain radar are tracked separately via the Weather Layer).`
                 : cases.length > 0 && mappableCases.length === 0
                 ? `Found ${cases.length} disease report${cases.length === 1 ? '' : 's'} in the database, but geographic coordinates are missing. You can safely synchronize them using verified farm locations.`
                 : mappableCases.length === 0
@@ -1533,6 +1779,53 @@ export const DiseaseMap: React.FC<DiseaseMapProps> = ({
           </div>
         )}
       </div>
+
+      {/* Weather Details Panel (Collapsible Drawer / Panel) */}
+      {showWeatherPanel && (
+        <div style={{ padding: '16px 20px', background: 'rgba(9, 14, 26, 0.98)', borderTop: '1px solid rgba(56, 189, 248, 0.3)' }}>
+          <WeatherDetailsPanel
+            weather={activeWeatherObservation}
+            loading={weatherLoading}
+            error={weatherError}
+            advisories={weatherAdvisories}
+            availableLocations={registeredFarmsWeather.map((f) => ({
+              id: f.farmId,
+              name: f.farmName,
+              lat: f.latitude,
+              lng: f.longitude,
+            }))}
+            selectedLocationId={selectedWeatherLocationId}
+            onSelectLocation={(locId) => {
+              setSelectedWeatherLocationId(locId);
+              if (!locId) {
+                if (userLocation) {
+                  loadWeatherForLocation(userLocation.lat, userLocation.lng, 'Your Location');
+                }
+              } else {
+                const target = registeredFarmsWeather.find((f) => f.farmId === locId);
+                if (target) {
+                  loadWeatherForLocation(target.latitude, target.longitude, target.farmName, target.farmId);
+                  setFocusTarget([target.latitude, target.longitude]);
+                }
+              }
+            }}
+            onRefresh={() => {
+              if (selectedWeatherLocationId) {
+                const target = registeredFarmsWeather.find((f) => f.farmId === selectedWeatherLocationId);
+                if (target) {
+                  loadWeatherForLocation(target.latitude, target.longitude, target.farmName, target.farmId);
+                }
+              } else if (userLocation) {
+                loadWeatherForLocation(userLocation.lat, userLocation.lng, 'Your Location');
+              } else {
+                loadWeatherRadar();
+                loadRegisteredFarmsWeather();
+              }
+            }}
+            onClose={() => setShowWeatherPanel(false)}
+          />
+        </div>
+      )}
 
       {/* ------------------------------------------------------------- */}
       {/* SECTION: NEARBY DISEASE ALERTS PANEL & CONTROLS                */}

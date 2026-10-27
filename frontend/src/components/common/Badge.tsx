@@ -49,6 +49,15 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
   } else if (normalized === 'REPORTED') {
     styleClass = 'badge-medium';
     label = 'Reported';
+  } else if (normalized === 'MONITORING') {
+    styleClass = 'badge-medium';
+    label = 'Monitoring';
+  } else if (normalized === 'TREATMENT ONGOING' || normalized === 'TREATMENT_ONGOING') {
+    styleClass = 'badge-high';
+    label = 'Treatment Ongoing';
+  } else if (normalized === 'ESCALATED') {
+    styleClass = 'badge-critical';
+    label = 'Escalated';
   }
 
   return (

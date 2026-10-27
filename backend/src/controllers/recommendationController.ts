@@ -183,6 +183,48 @@ export const getRecommendations = async (req: Request, res: Response): Promise<v
       formatted = formatted.filter(r => r.cropName?.toLowerCase() === crop.toLowerCase());
     }
 
+    // Role-based filtering for authenticated farmers:
+    // Farmers only see recommendations for their authorized farms and crops. Never leak other farms' recommendations.
+    const reqUser = (req as AuthenticatedRequest).user;
+    if (reqUser && reqUser.role.toLowerCase() === 'farmer') {
+      const farmerDoc = await Farmer.findOne({
+        $or: [
+          { userId: reqUser.id },
+          { email: reqUser.email.toLowerCase() }
+        ]
+      });
+
+      if (farmerDoc) {
+        const farmerFarms = await Farm.find({ farmerId: farmerDoc._id }).lean();
+        const farmerFarmIds = new Set(farmerFarms.map(f => f._id.toString()));
+        const farmerCrops = new Set<string>();
+
+        farmerFarms.forEach(f => {
+          if (f.currentCrop) farmerCrops.add(f.currentCrop.trim().toLowerCase());
+        });
+        if (farmerDoc.primaryCrops) {
+          farmerDoc.primaryCrops.split(',').forEach(c => {
+            if (c.trim()) farmerCrops.add(c.trim().toLowerCase());
+          });
+        }
+
+        formatted = formatted.filter(r => {
+          // If recommendation is linked to a specific farm, it must be the farmer's farm
+          if (r.farmId) {
+            return farmerFarmIds.has(r.farmId.toString());
+          }
+          // If recommendation is linked to a farmer, it must be this farmer
+          if (r.farmerId) {
+            return r.farmerId.toString() === farmerDoc._id.toString();
+          }
+          // If general recommendation, only show if crop matches farmer's crops or is universal
+          const recCrop = (r.cropName || '').toLowerCase();
+          if (recCrop === 'universal' || !recCrop) return true;
+          return farmerCrops.has(recCrop);
+        });
+      }
+    }
+
     res.json(formatted);
   } catch (error: any) {
     console.error('Error fetching recommendations:', error);
@@ -542,14 +584,76 @@ function getFallbackTemplates(cropName?: string, growthStage?: string, soilCondi
 export const updateRecommendation = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const updated = await BiotechnologyRecommendation.findByIdAndUpdate(id, req.body, { new: true });
-    if (!updated) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       res.status(404).json({ error: 'Recommendation not found' });
       return;
     }
+
+    const existing = await BiotechnologyRecommendation.findById(id);
+    if (!existing) {
+      res.status(404).json({ error: 'Recommendation not found' });
+      return;
+    }
+
+    const userRole = (req.user?.role || '').toLowerCase();
+
+    // Farmer-specific authorization and boundary validation
+    if (userRole === 'farmer') {
+      const farmerDoc = await Farmer.findOne({
+        $or: [
+          { userId: req.user?.id },
+          { email: req.user?.email.toLowerCase() }
+        ]
+      });
+
+      if (!farmerDoc) {
+        res.status(403).json({ error: 'Forbidden: Farmer profile not associated with this account.' });
+        return;
+      }
+
+      const farmerFarms = await Farm.find({ farmerId: farmerDoc._id }).lean();
+      const farmerFarmIds = new Set(farmerFarms.map(f => f._id.toString()));
+
+      // If the recommendation is assigned to a specific farm, ensure it belongs to this farmer
+      if (existing.farmId && !farmerFarmIds.has(existing.farmId.toString())) {
+        res.status(403).json({
+          error: 'Forbidden: You do not have permission to modify recommendations for another farm.',
+        });
+        return;
+      }
+
+      // Farmers can ONLY update the application status (e.g. marking applied)
+      const protectedFields = [
+        'title', 'productName', 'targetIssue', 'reasoning', 'expectedBenefit',
+        'applicationInstructions', 'dosage', 'precautions', 'recommendationType',
+        'creatorId', 'isAutomatedSuggestion', 'farmId', 'cropVarietyId'
+      ];
+      const hasProtectedModification = protectedFields.some(field => req.body[field] !== undefined);
+
+      if (hasProtectedModification) {
+        res.status(403).json({
+          error: 'Forbidden: Farmers may only update the application status (Mark Applied). Expert protocol details cannot be modified.',
+        });
+        return;
+      }
+
+      if (req.body.status) {
+        existing.status = req.body.status;
+        await existing.save();
+      }
+
+      res.json({
+        id: existing._id.toString(),
+        ...existing.toObject(),
+      });
+      return;
+    }
+
+    // Authorized Expert / Admin updates
+    const updated = await BiotechnologyRecommendation.findByIdAndUpdate(id, req.body, { new: true });
     res.json({
-      id: updated._id.toString(),
-      ...updated.toObject(),
+      id: updated!._id.toString(),
+      ...updated!.toObject(),
     });
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to update recommendation' });

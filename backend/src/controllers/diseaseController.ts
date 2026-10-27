@@ -1,6 +1,18 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { DiseaseReport, Disease, Farm, Farmer, User, Notification, FarmerAdvisory, ActivityLog, BiotechnologyRecommendation } from '../models';
+import {
+  DiseaseReport,
+  Disease,
+  Farm,
+  Farmer,
+  User,
+  Notification,
+  FarmerAdvisory,
+  ActivityLog,
+  BiotechnologyRecommendation,
+  DiseaseCaseFollowUp,
+  DiseaseCaseAuditLog,
+} from '../models';
 import { AuthenticatedRequest } from '../middleware/auth';
 
 export const getDiseasesCatalog = async (_req: Request, res: Response): Promise<void> => {
@@ -343,6 +355,15 @@ export const getDiseaseCaseById = async (req: Request, res: Response): Promise<v
     const isOwnFarmer = reqUser && farmer?.userId && farmer.userId.toString() === reqUser.id;
     const allowFarmerContact = isPrivileged || isOwnFarmer;
 
+    // Fetch associated follow-up reports and audit log history
+    const [followUps, auditLogs] = await Promise.all([
+      DiseaseCaseFollowUp.find({ diseaseCaseId: c._id })
+        .populate('farmerUserId', 'name email role')
+        .populate('reviewedById', 'name email role')
+        .sort({ treatmentDate: -1, createdAt: -1 }),
+      DiseaseCaseAuditLog.find({ diseaseCaseId: c._id }).sort({ timestamp: -1 }),
+    ]);
+
     res.json({
       id: c._id.toString(),
       cropVarietyId: variety?._id?.toString() || null,
@@ -396,11 +417,47 @@ export const getDiseaseCaseById = async (req: Request, res: Response): Promise<v
       lat: resolvedLat,
       lng: resolvedLng,
       dateObserved: c.dateObserved,
-      status: (c.status || 'ACTIVE').toUpperCase(),
+      status: (c.status || 'ACTIVE'),
       imageUrl: c.imageUrl,
       recommendedTreatment: c.recommendedTreatment,
       resolvedAt: c.resolvedAt,
+      pendingFollowUpReview: Boolean(c.pendingFollowUpReview),
+      lastFollowUpDate: c.lastFollowUpDate,
       isDemo: c.isDemo !== undefined && c.isDemo !== null ? Boolean(c.isDemo) : true,
+      followUps: followUps.map((f: any) => ({
+        id: f._id.toString(),
+        diseaseCaseId: f.diseaseCaseId.toString(),
+        farmId: f.farmId.toString(),
+        farmerUserId: f.farmerUserId?._id?.toString() || f.farmerUserId?.toString(),
+        farmerName: f.farmerUserId?.name || 'Farmer',
+        treatmentDate: f.treatmentDate,
+        treatmentApplied: f.treatmentApplied,
+        currentSymptoms: f.currentSymptoms,
+        pestActivity: f.pestActivity,
+        currentCondition: f.currentCondition,
+        additionalObservations: f.additionalObservations,
+        photoUrl: f.photoUrl,
+        status: f.status,
+        reviewNotes: f.reviewNotes,
+        reviewedById: f.reviewedById?._id?.toString(),
+        reviewerName: f.reviewedById?.name,
+        reviewerRole: f.reviewedById?.role,
+        reviewedAt: f.reviewedAt,
+        caseStatusAfterReview: f.caseStatusAfterReview,
+        createdAt: f.createdAt,
+      })),
+      auditTrail: auditLogs.map((a: any) => ({
+        id: a._id.toString(),
+        action: a.action,
+        performedById: a.performedById?.toString(),
+        performedByName: a.performedByName,
+        performedByRole: a.performedByRole,
+        previousStatus: a.previousStatus,
+        newStatus: a.newStatus,
+        notes: a.notes,
+        details: a.details,
+        timestamp: a.timestamp,
+      })),
       recommendations: linkedRecommendations.map(r => ({
         id: r._id.toString(),
         recommendationType: r.recommendationType,
@@ -842,3 +899,384 @@ export const deleteDiseaseCase = async (req: AuthenticatedRequest, res: Response
     res.status(500).json({ error: 'Failed to delete disease case' });
   }
 };
+
+/**
+ * Submit farmer follow-up report for an active disease case
+ * Strictly validates farmer authorization, required fields, and dates.
+ * Never automatically resolves a case.
+ */
+export const submitCaseFollowUp = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      res.status(404).json({ error: 'Disease case not found' });
+      return;
+    }
+
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized: Authentication required' });
+      return;
+    }
+
+    const diseaseCase = await DiseaseReport.findById(id).populate({
+      path: 'farmId',
+      populate: { path: 'farmerId' }
+    });
+
+    if (!diseaseCase) {
+      res.status(404).json({ error: 'Disease case not found' });
+      return;
+    }
+
+    const farm: any = diseaseCase.farmId;
+    const farmer: any = farm?.farmerId;
+
+    // Strict Authorization Check:
+    // If user has 'farmer' role, verify they own the farm or reported this case
+    const userRole = (req.user.role || '').toLowerCase();
+    if (userRole === 'farmer') {
+      const userFarmer = await Farmer.findOne({
+        $or: [
+          { userId: req.user.id },
+          { email: req.user.email.toLowerCase() }
+        ]
+      });
+
+      const isFarmOwner = userFarmer && farm?.farmerId && (
+        farm.farmerId.toString() === userFarmer._id.toString() ||
+        farm.farmerId._id?.toString() === userFarmer._id.toString()
+      );
+      const isReporter = diseaseCase.reportedById?.toString() === req.user.id;
+
+      if (!isFarmOwner && !isReporter) {
+        res.status(403).json({
+          error: 'Forbidden: You are not authorized to submit a follow-up report for this case or farm.',
+        });
+        return;
+      }
+    }
+
+    const {
+      treatmentDate,
+      treatmentApplied,
+      currentSymptoms,
+      pestActivity,
+      currentCondition,
+      condition,
+      additionalObservations,
+      imageUrl,
+    } = req.body;
+
+    const conditionVal = currentCondition || condition;
+
+    if (!treatmentDate) {
+      res.status(400).json({ error: 'Treatment date is required.' });
+      return;
+    }
+
+    const parsedDate = new Date(treatmentDate);
+    if (isNaN(parsedDate.getTime())) {
+      res.status(400).json({ error: 'Invalid treatment date format.' });
+      return;
+    }
+
+    const tomorrow = new Date(Date.now() + 24 * 3600 * 1000);
+    if (parsedDate > tomorrow) {
+      res.status(400).json({ error: 'Treatment date cannot be in the future.' });
+      return;
+    }
+
+    if (!treatmentApplied || !treatmentApplied.trim()) {
+      res.status(400).json({ error: 'Treatment or intervention applied is required.' });
+      return;
+    }
+
+    if (!currentSymptoms || !currentSymptoms.trim()) {
+      res.status(400).json({ error: 'Current symptoms are required.' });
+      return;
+    }
+
+    const validConditions = ['Improved', 'Unchanged', 'Worsened', 'IMPROVED', 'UNCHANGED', 'WORSENED'];
+    if (!conditionVal || !validConditions.includes(conditionVal)) {
+      res.status(400).json({ error: 'Current condition must be one of: Improved, Unchanged, or Worsened.' });
+      return;
+    }
+
+    const normalizedCondition =
+      conditionVal.charAt(0).toUpperCase() + conditionVal.slice(1).toLowerCase();
+
+    const uploadedPhoto = imageUrl || (req.file ? `/uploads/${req.file.filename}` : undefined);
+
+    const followUp = await DiseaseCaseFollowUp.create({
+      diseaseCaseId: diseaseCase._id,
+      farmId: farm._id,
+      farmerUserId: req.user.id,
+      farmerId: farmer?._id || undefined,
+      crop: diseaseCase.crop || farm.currentCrop,
+      treatmentDate: parsedDate,
+      treatmentApplied: treatmentApplied.trim(),
+      currentSymptoms: currentSymptoms.trim(),
+      pestActivity: pestActivity ? pestActivity.trim() : undefined,
+      currentCondition: normalizedCondition as any,
+      additionalObservations: additionalObservations ? additionalObservations.trim() : undefined,
+      photoUrl: uploadedPhoto,
+      status: 'PENDING_REVIEW',
+    });
+
+    // CRITICAL: NEVER automatically mark case as Resolved!
+    diseaseCase.pendingFollowUpReview = true;
+    diseaseCase.lastFollowUpDate = new Date();
+    if (diseaseCase.status === 'REPORTED') {
+      diseaseCase.status = 'ACTIVE';
+    }
+    await diseaseCase.save();
+
+    // Preserve full audit history
+    await DiseaseCaseAuditLog.create({
+      diseaseCaseId: diseaseCase._id,
+      action: 'FOLLOW_UP_SUBMITTED',
+      performedById: req.user.id,
+      performedByName: req.user.name,
+      performedByRole: req.user.role,
+      previousStatus: diseaseCase.status,
+      newStatus: diseaseCase.status,
+      notes: `Farmer submitted follow-up report. Condition: "${normalizedCondition}". Intervention applied: "${treatmentApplied.trim()}".`,
+      details: JSON.stringify({
+        treatmentDate: parsedDate,
+        treatmentApplied: treatmentApplied.trim(),
+        currentSymptoms: currentSymptoms.trim(),
+        pestActivity: pestActivity?.trim(),
+        currentCondition: normalizedCondition,
+      }),
+      timestamp: new Date(),
+    });
+
+    // Notify assigned agronomist and authorized experts to review
+    const reviewers = await User.find({
+      role: { $in: ['agronomist', 'AGRONOMIST', 'biotech_expert', 'BIOTECH_EXPERT', 'admin', 'ADMIN'] }
+    });
+    for (const r of reviewers) {
+      await Notification.create({
+        recipientUserId: r._id,
+        type: 'CASE_FOLLOWUP',
+        title: `📋 Follow-Up Submitted: ${diseaseCase.diseaseName}`,
+        message: `${req.user.name} submitted a treatment follow-up for ${farm.farmName}. Condition: ${normalizedCondition}. Ready for expert review.`,
+        severity: normalizedCondition === 'Worsened' ? 'WARNING' : 'INFO',
+        linkUrl: `/disease-surveillance/${diseaseCase._id}`,
+      });
+    }
+
+    res.status(201).json({
+      message: 'Follow-up report submitted successfully and flagged for agronomist review.',
+      followUp: {
+        id: followUp._id.toString(),
+        ...followUp.toObject(),
+      },
+    });
+  } catch (error: any) {
+    console.error('Error submitting follow-up report:', error);
+    res.status(500).json({ error: 'Failed to record follow-up report', message: error.message });
+  }
+};
+
+/**
+ * Get all follow-ups and audit logs for a disease case
+ */
+export const getCaseFollowUps = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      res.status(404).json({ error: 'Disease case not found' });
+      return;
+    }
+
+    const diseaseCase = await DiseaseReport.findById(id).populate('farmId');
+    if (!diseaseCase) {
+      res.status(404).json({ error: 'Disease case not found' });
+      return;
+    }
+
+    const [followUps, auditLogs] = await Promise.all([
+      DiseaseCaseFollowUp.find({ diseaseCaseId: id })
+        .populate('farmerUserId', 'name email role')
+        .populate('reviewedById', 'name email role')
+        .sort({ treatmentDate: -1, createdAt: -1 }),
+      DiseaseCaseAuditLog.find({ diseaseCaseId: id }).sort({ timestamp: -1 }),
+    ]);
+
+    res.json({
+      diseaseCaseId: id,
+      pendingReview: Boolean(diseaseCase.pendingFollowUpReview),
+      followUps: followUps.map((f: any) => ({
+        id: f._id.toString(),
+        diseaseCaseId: f.diseaseCaseId.toString(),
+        farmId: f.farmId.toString(),
+        farmerUserId: f.farmerUserId?._id?.toString() || f.farmerUserId?.toString(),
+        farmerName: f.farmerUserId?.name || 'Farmer',
+        treatmentDate: f.treatmentDate,
+        treatmentApplied: f.treatmentApplied,
+        currentSymptoms: f.currentSymptoms,
+        pestActivity: f.pestActivity,
+        currentCondition: f.currentCondition,
+        additionalObservations: f.additionalObservations,
+        photoUrl: f.photoUrl,
+        status: f.status,
+        reviewNotes: f.reviewNotes,
+        reviewedById: f.reviewedById?._id?.toString(),
+        reviewerName: f.reviewedById?.name,
+        reviewerRole: f.reviewedById?.role,
+        reviewedAt: f.reviewedAt,
+        caseStatusAfterReview: f.caseStatusAfterReview,
+        createdAt: f.createdAt,
+      })),
+      auditLogs: auditLogs.map((a: any) => ({
+        id: a._id.toString(),
+        action: a.action,
+        performedById: a.performedById?.toString(),
+        performedByName: a.performedByName,
+        performedByRole: a.performedByRole,
+        previousStatus: a.previousStatus,
+        newStatus: a.newStatus,
+        notes: a.notes,
+        details: a.details,
+        timestamp: a.timestamp,
+      })),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to fetch case follow-ups' });
+  }
+};
+
+/**
+ * Review follow-up and update official case status
+ * Authorized roles: admin, agronomist, biotech_expert
+ * Farmer access is strictly forbidden.
+ * Evidence-based case resolution requires reviewer notes and justification.
+ */
+export const reviewCaseFollowUp = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      res.status(404).json({ error: 'Disease case not found' });
+      return;
+    }
+
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+
+    const allowedRoles = ['admin', 'agronomist', 'biotech_expert', 'ADMIN', 'AGRONOMIST', 'BIOTECH_EXPERT'];
+    if (!allowedRoles.includes(req.user.role)) {
+      res.status(403).json({
+        error: `Forbidden: Agronomist review requires an authorized reviewer role. Current role: ${req.user.role}`,
+      });
+      return;
+    }
+
+    const { followUpId, newStatus, reviewNotes, reason } = req.body;
+
+    const validStatuses = ['Monitoring', 'Treatment Ongoing', 'Resolved', 'Escalated'];
+    if (!newStatus || !validStatuses.includes(newStatus)) {
+      res.status(400).json({
+        error: 'Invalid official status. Must be one of: Monitoring, Treatment Ongoing, Resolved, Escalated.',
+      });
+      return;
+    }
+
+    if (!reviewNotes || !reviewNotes.trim()) {
+      res.status(400).json({
+        error: 'Review notes are required. Evidence must be documented before updating official case status.',
+      });
+      return;
+    }
+
+    const diseaseCase = await DiseaseReport.findById(id).populate({
+      path: 'farmId',
+      populate: { path: 'farmerId' }
+    });
+
+    if (!diseaseCase) {
+      res.status(404).json({ error: 'Disease case not found' });
+      return;
+    }
+
+    const previousStatus = diseaseCase.status;
+    diseaseCase.status = newStatus;
+    if (newStatus === 'Resolved') {
+      diseaseCase.resolvedAt = new Date();
+    } else {
+      diseaseCase.resolvedAt = undefined;
+    }
+
+    // Update specific follow-up if provided
+    if (followUpId && mongoose.Types.ObjectId.isValid(followUpId)) {
+      await DiseaseCaseFollowUp.findByIdAndUpdate(followUpId, {
+        status: 'REVIEWED',
+        reviewedById: req.user.id,
+        reviewedAt: new Date(),
+        reviewNotes: reviewNotes.trim(),
+        caseStatusAfterReview: newStatus,
+      });
+    }
+
+    // Check remaining pending reviews
+    const remainingPending = await DiseaseCaseFollowUp.countDocuments({
+      diseaseCaseId: id,
+      status: 'PENDING_REVIEW',
+      ...(followUpId ? { _id: { $ne: followUpId } } : {}),
+    });
+    diseaseCase.pendingFollowUpReview = remainingPending > 0;
+    await diseaseCase.save();
+
+    // Record audit trail
+    const auditEntry = await DiseaseCaseAuditLog.create({
+      diseaseCaseId: diseaseCase._id,
+      action: 'AGRONOMIST_REVIEW',
+      performedById: req.user.id,
+      performedByName: req.user.name,
+      performedByRole: req.user.role,
+      previousStatus,
+      newStatus,
+      notes: reviewNotes.trim(),
+      details: reason ? `Reason: ${reason.trim()}` : undefined,
+      timestamp: new Date(),
+    });
+
+    // Log in ActivityLog
+    await ActivityLog.create({
+      userId: req.user.id,
+      action: 'AGRONOMIST_CASE_REVIEW',
+      module: 'Disease Surveillance',
+      details: `${req.user.name} reviewed case ${diseaseCase.diseaseName} -> status set to ${newStatus}`,
+    });
+
+    // Notify farmer of official decision
+    const farm: any = diseaseCase.farmId;
+    const farmer: any = farm?.farmerId;
+    if (farmer?.userId) {
+      await Notification.create({
+        recipientUserId: farmer.userId,
+        type: 'CASE_REVIEW_UPDATE',
+        title: `🔬 Agronomist Review: ${diseaseCase.diseaseName}`,
+        message: `Your disease case has been reviewed by ${req.user.name} (${req.user.role}). Official status: ${newStatus}. Notes: "${reviewNotes.trim()}".`,
+        severity: newStatus === 'Resolved' ? 'SUCCESS' : newStatus === 'Escalated' ? 'DANGER' : 'INFO',
+        linkUrl: `/disease-surveillance/${diseaseCase._id}`,
+      });
+    }
+
+    res.json({
+      message: `Case status successfully updated to ${newStatus}.`,
+      diseaseCase: {
+        id: diseaseCase._id.toString(),
+        ...diseaseCase.toObject(),
+        status: newStatus,
+      },
+      auditEntry,
+    });
+  } catch (error: any) {
+    console.error('Error reviewing follow-up:', error);
+    res.status(500).json({ error: 'Failed to record agronomist review', message: error.message });
+  }
+};
+

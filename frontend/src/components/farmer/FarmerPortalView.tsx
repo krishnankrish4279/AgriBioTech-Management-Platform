@@ -423,6 +423,30 @@ export const FarmerPortalView: React.FC = () => {
                       {report.recommendedTreatment || '⏳ Your agronomist has been alerted. Recommended biological formulation will appear here once reviewed.'}
                     </p>
                   </div>
+
+                  {/* Follow-Up Action on Active Cases */}
+                  <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/disease-surveillance/${report.id}`)}
+                      className="btn btn-sm"
+                      style={{
+                        background: 'rgba(56, 189, 248, 0.12)',
+                        color: '#38bdf8',
+                        border: '1px solid rgba(56, 189, 248, 0.3)',
+                        fontSize: '0.76rem',
+                        padding: '5px 12px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        borderRadius: '6px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <RefreshCw size={12} /> Submit Follow-Up & Case History <ChevronRight size={13} />
+                    </button>
+                  </div>
                 </div>
               );
             })}

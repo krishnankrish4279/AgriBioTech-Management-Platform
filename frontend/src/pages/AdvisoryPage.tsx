@@ -22,6 +22,11 @@ export const AdvisoryPage: React.FC = () => {
   const loadAdvisories = async () => {
     setLoading(true);
     try {
+      try {
+        await api.weather.syncAdvisories();
+      } catch {
+        // Safe non-blocking sync if weather API has intermittent delay
+      }
       const data = await api.advisories.getAll({
         search: search || undefined,
         category: categoryFilter !== 'ALL' ? categoryFilter : undefined,
@@ -148,9 +153,13 @@ export const AdvisoryPage: React.FC = () => {
       ) : advisories.length === 0 ? (
         <div className="card-glass" style={{ textAlign: 'center', padding: '50px' }}>
           <MessageSquareShare size={44} color="#10b981" style={{ margin: '0 auto 10px' }} />
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>No Farmer Advisories Found</h3>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>
+            {categoryFilter === 'WEATHER_ACTION' ? 'No Active Weather Alerts' : 'No Farmer Advisories Found'}
+          </h3>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-            No messages match your selected filters.
+            {categoryFilter === 'WEATHER_ACTION'
+              ? 'Current meteorological conditions across registered farms are within normal agronomic thresholds. No heavy rain, drought, or excessive humidity warnings are currently active.'
+              : 'No messages match your selected filters.'}
           </p>
           {canSend && (
             <button onClick={() => setShowCreateModal(true)} className="btn btn-primary">

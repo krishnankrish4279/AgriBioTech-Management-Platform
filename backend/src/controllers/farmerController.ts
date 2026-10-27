@@ -317,9 +317,23 @@ export const deleteFarmer = async (req: AuthenticatedRequest, res: Response): Pr
   }
 };
 
-export const getFarmsList = async (_req: Request, res: Response): Promise<void> => {
+export const getFarmsList = async (req: Request, res: Response): Promise<void> => {
   try {
-    const farms = await Farm.find().populate('farmerId').populate('cropVarietyId').sort({ createdAt: -1 });
+    const reqUser = (req as AuthenticatedRequest).user;
+    let farmFilter: any = {};
+    if (reqUser && reqUser.role && reqUser.role.toLowerCase() === 'farmer') {
+      const farmerDoc = await Farmer.findOne({
+        $or: [
+          { userId: reqUser.id },
+          { email: reqUser.email.toLowerCase() }
+        ]
+      });
+      if (farmerDoc) {
+        farmFilter = { farmerId: farmerDoc._id };
+      }
+    }
+
+    const farms = await Farm.find(farmFilter).populate('farmerId').populate('cropVarietyId').sort({ createdAt: -1 });
 
     const formatted = await Promise.all(farms.map(async (f) => {
       const farmer: any = f.farmerId;
