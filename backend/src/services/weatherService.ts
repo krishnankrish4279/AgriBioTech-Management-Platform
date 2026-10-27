@@ -444,8 +444,12 @@ export async function fetchRainViewerRadarMeta(): Promise<{
   host: string;
   radarTime: number;
   tileUrl: string;
+  path: string;
   colorScheme: number;
   smooth: number;
+  maxNativeZoom: number;
+  minZoom: number;
+  maxZoom: number;
 }> {
   try {
     const controller = new AbortController();
@@ -463,27 +467,36 @@ export async function fetchRainViewerRadarMeta(): Promise<{
       const allFrames = [...pastFrames, ...nowcastFrames];
       const latestFrame = allFrames.length > 0 ? allFrames[allFrames.length - 1] : null;
       const radarTime = latestFrame ? latestFrame.time : Math.floor(Date.now() / 1000);
+      const framePath = latestFrame?.path || (latestFrame?.time ? `/v2/radar/${latestFrame.time}` : '');
 
-      // RainViewer tile format: {host}/v2/radar/{time}/256/{z}/{x}/{y}/2/1_1.png
+      // RainViewer tile format: {host}{path}/256/{z}/{x}/{y}/2/1_1.png
+      // Documented supported zoom levels for RainViewer radar tiles: 0 to 7.
       return {
         host,
         radarTime,
-        tileUrl: `${host}/v2/radar/${radarTime}/256/{z}/{x}/{y}/2/1_1.png`,
+        path: framePath,
+        tileUrl: framePath ? `${host}${framePath}/256/{z}/{x}/{y}/2/1_1.png` : '',
         colorScheme: 2,
         smooth: 1,
+        maxNativeZoom: 7,
+        minZoom: 1,
+        maxZoom: 18,
       };
     }
   } catch (err: any) {
     console.warn('[RainViewer API] Could not retrieve live radar frame:', err.message);
   }
 
-  // Graceful fallback with standard tile URL structure
-  const fallbackTime = Math.floor(Date.now() / 1000);
+  // Graceful empty fallback without broken URLs
   return {
     host: 'https://tilecache.rainviewer.com',
-    radarTime: fallbackTime,
-    tileUrl: `https://tilecache.rainviewer.com/v2/radar/${fallbackTime}/256/{z}/{x}/{y}/2/1_1.png`,
+    radarTime: 0,
+    path: '',
+    tileUrl: '',
     colorScheme: 2,
     smooth: 1,
+    maxNativeZoom: 7,
+    minZoom: 1,
+    maxZoom: 18,
   };
 }

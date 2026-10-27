@@ -373,7 +373,17 @@ export const api = {
     syncAdvisories: () =>
       request<{ message: string; createdCount: number }>('/weather/sync-advisories', { method: 'POST' }),
     getRadarOverlay: () =>
-      request<{ host: string; radarTime: number; tileUrl: string; colorScheme: number; smooth: number }>('/weather/radar-overlay'),
+      request<{
+        host: string;
+        radarTime: number;
+        tileUrl: string;
+        path?: string;
+        colorScheme: number;
+        smooth: number;
+        maxNativeZoom?: number;
+        minZoom?: number;
+        maxZoom?: number;
+      }>('/weather/radar-overlay'),
   },
 
   // Standalone image upload
